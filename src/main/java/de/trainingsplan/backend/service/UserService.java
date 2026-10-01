@@ -4,6 +4,7 @@ import de.trainingsplan.backend.controller.dto.RegisterRequest;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.User;
 import de.trainingsplan.backend.repository.UserRepository;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -36,7 +37,7 @@ public class UserService {
         if (!EMAIL.matcher(email).matches()
                 || password == null
                 || password.length() < MIN_PASSWORD_LENGTH
-                || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
+                || password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Email or password invalid.");
         }
         if (userRepository.existsByEmail(email)) {
