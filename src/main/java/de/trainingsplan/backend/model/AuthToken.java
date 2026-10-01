@@ -32,13 +32,17 @@ public class AuthToken {
     @Column(nullable = false)
     private Instant createdAt;
 
+    @Column(nullable = false)
+    private Instant expiresAt;
+
     protected AuthToken() {
     }
 
-    public AuthToken(String tokenHash, User user) {
+    public AuthToken(String tokenHash, User user, Instant expiresAt) {
         this.tokenHash = tokenHash;
         this.user = user;
         this.createdAt = Instant.now();
+        this.expiresAt = expiresAt;
     }
 
     public Long getId() {
@@ -55,5 +59,9 @@ public class AuthToken {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getExpiresAt() {
+        return expiresAt;
     }
 }

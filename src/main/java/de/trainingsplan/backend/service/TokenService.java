@@ -7,8 +7,12 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,19 +23,37 @@ public class TokenService {
 
     private final SecureRandom secureRandom = new SecureRandom();
     private final AuthTokenRepository authTokenRepository;
+    private final Duration tokenTtl;
 
-    public TokenService(AuthTokenRepository authTokenRepository) {
+    public TokenService(AuthTokenRepository authTokenRepository,
+                        @Value("${app.auth.token-ttl:24h}") Duration tokenTtl) {
         this.authTokenRepository = authTokenRepository;
+        this.tokenTtl = tokenTtl;
     }
 
-    /** Erzeugt ein neues Token für den User und gibt es im Klartext zurück (nur hier einsehbar). */
+    /**
+     * Erzeugt ein neues Token für den User und gibt es im Klartext zurück (nur hier einsehbar).
+     * Das Token ist {@code app.auth.token-ttl} lang gültig. Dabei werden abgelaufene Tokens aufgeräumt.
+     */
     @Transactional
     public String createToken(User user) {
+        Instant now = Instant.now();
+        authTokenRepository.deleteByExpiresAtBefore(now);
         byte[] bytes = new byte[TOKEN_BYTES];
         secureRandom.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        authTokenRepository.save(new AuthToken(hash(token), user));
+        authTokenRepository.save(new AuthToken(hash(token), user, now.plus(tokenTtl)));
         return token;
+    }
+
+    /** Liefert den zugehörigen User, wenn das Token existiert und noch nicht abgelaufen ist. */
+    @Transactional(readOnly = true)
+    public Optional<User> findUserByToken(String token) {
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+        return authTokenRepository.findByTokenHashAndExpiresAtAfter(hash(token), Instant.now())
+                .map(AuthToken::getUser);
     }
 
     /** Macht das Token ungültig. Gibt false zurück, wenn es nicht existiert. */
