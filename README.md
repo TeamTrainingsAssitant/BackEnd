@@ -6,8 +6,11 @@ Spring-Boot-Backend (Java 25) des TrainingsPlanAssistant. Alle Endpunkte liegen 
 
 ```
 mvnw.cmd spring-boot:run   # braucht PostgreSQL auf localhost:5432 (DB "trainingsplan")
-mvnw.cmd test              # nutzt eine In-Memory-H2-Datenbank
+mvnw.cmd test              # reine Unit-Tests, keine Datenbank nötig
 ```
+
+Es gibt bewusst nur Unit-Tests (Mockito, ohne Spring-Kontext und ohne Datenbank).
+Das Zusammenspiel mit der Datenbank wird gegen die deployte Heroku-Version getestet.
 
 `JAVA_HOME` muss auf ein JDK 25 zeigen. Die DB-Verbindung lässt sich über `JDBC_DATABASE_URL`,
 `JDBC_DATABASE_USERNAME` und `JDBC_DATABASE_PASSWORD` überschreiben (auf Heroku setzt der Buildpack sie selbst).

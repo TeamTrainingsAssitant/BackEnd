@@ -1,73 +1,105 @@
 package de.trainingsplan.backend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import de.trainingsplan.backend.model.AuthToken;
 import de.trainingsplan.backend.model.User;
 import de.trainingsplan.backend.repository.AuthTokenRepository;
-import de.trainingsplan.backend.repository.UserRepository;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.mockito.ArgumentCaptor;
 
-@SpringBootTest
 class TokenServiceTest {
 
-    @Autowired
-    private TokenService tokenService;
+    private static final Duration TTL = Duration.ofHours(1);
 
-    @Autowired
     private AuthTokenRepository authTokenRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
+    private TokenService tokenService;
     private User user;
 
     @BeforeEach
     void setUp() {
-        authTokenRepository.deleteAll();
-        userRepository.deleteAll();
-        user = userRepository.save(new User("max", "max@mosbach.de", "hash"));
+        authTokenRepository = mock(AuthTokenRepository.class);
+        tokenService = new TokenService(authTokenRepository, TTL);
+        user = new User("max", "max@mosbach.de", "hash");
     }
 
     @Test
-    void newTokenIsValidAndExpiresInTheFuture() {
+    void createTokenStoresOnlyHashWithExpiry() {
+        Instant before = Instant.now();
+
         String token = tokenService.createToken(user);
 
-        assertThat(tokenService.findUserByToken(token)).hasValueSatisfying(u ->
-                assertThat(u.getId()).isEqualTo(user.getId()));
-        AuthToken stored = authTokenRepository.findAll().get(0);
-        assertThat(stored.getExpiresAt()).isAfter(stored.getCreatedAt().plus(Duration.ofHours(23)));
+        ArgumentCaptor<AuthToken> saved = ArgumentCaptor.forClass(AuthToken.class);
+        verify(authTokenRepository).save(saved.capture());
+        AuthToken stored = saved.getValue();
+        assertThat(token).hasSizeGreaterThanOrEqualTo(40);
+        assertThat(stored.getTokenHash()).isEqualTo(TokenService.hash(token)).isNotEqualTo(token);
+        assertThat(stored.getUser()).isSameAs(user);
+        assertThat(stored.getExpiresAt()).isBetween(before.plus(TTL), Instant.now().plus(TTL));
     }
 
     @Test
-    void expiredTokenIsNotAccepted() {
-        String token = "expired-token";
-        authTokenRepository.save(new AuthToken(TokenService.hash(token), user,
-                Instant.now().minusSeconds(1)));
-
-        assertThat(tokenService.findUserByToken(token)).isEmpty();
+    void createTokenGeneratesDifferentTokens() {
+        assertThat(tokenService.createToken(user)).isNotEqualTo(tokenService.createToken(user));
     }
 
     @Test
-    void unknownOrEmptyTokenIsNotAccepted() {
-        assertThat(tokenService.findUserByToken("nope")).isEmpty();
-        assertThat(tokenService.findUserByToken("")).isEmpty();
-        assertThat(tokenService.findUserByToken(null)).isEmpty();
-    }
-
-    @Test
-    void creatingTokenRemovesExpiredOnes() {
-        authTokenRepository.save(new AuthToken(TokenService.hash("old"), user,
-                Instant.now().minusSeconds(60)));
-
+    void createTokenRemovesExpiredTokens() {
         tokenService.createToken(user);
 
-        assertThat(authTokenRepository.findAll()).hasSize(1);
-        assertThat(authTokenRepository.findByTokenHash(TokenService.hash("old"))).isEmpty();
+        verify(authTokenRepository).deleteByExpiresAtBefore(any(Instant.class));
+    }
+
+    @Test
+    void findUserByTokenReturnsUserOfValidToken() {
+        AuthToken stored = new AuthToken(TokenService.hash("abc"), user, Instant.now().plus(TTL));
+        when(authTokenRepository.findByTokenHashAndExpiresAtAfter(
+                org.mockito.ArgumentMatchers.eq(TokenService.hash("abc")), any(Instant.class)))
+                .thenReturn(Optional.of(stored));
+
+        assertThat(tokenService.findUserByToken("abc")).containsSame(user);
+    }
+
+    @Test
+    void findUserByTokenIsEmptyForUnknownOrExpiredToken() {
+        when(authTokenRepository.findByTokenHashAndExpiresAtAfter(anyString(), any(Instant.class)))
+                .thenReturn(Optional.empty());
+
+        assertThat(tokenService.findUserByToken("nope")).isEmpty();
+    }
+
+    @Test
+    void findUserByTokenIgnoresBlankToken() {
+        assertThat(tokenService.findUserByToken("")).isEmpty();
+        assertThat(tokenService.findUserByToken("  ")).isEmpty();
+        assertThat(tokenService.findUserByToken(null)).isEmpty();
+        verifyNoInteractions(authTokenRepository);
+    }
+
+    @Test
+    void revokeTokenReportsWhetherATokenWasDeleted() {
+        when(authTokenRepository.deleteByTokenHash(TokenService.hash("abc"))).thenReturn(1L);
+        when(authTokenRepository.deleteByTokenHash(TokenService.hash("unknown"))).thenReturn(0L);
+
+        assertThat(tokenService.revokeToken("abc")).isTrue();
+        assertThat(tokenService.revokeToken("unknown")).isFalse();
+    }
+
+    @Test
+    void revokeTokenIgnoresBlankToken() {
+        assertThat(tokenService.revokeToken(null)).isFalse();
+        assertThat(tokenService.revokeToken(" ")).isFalse();
+        verify(authTokenRepository, never()).deleteByTokenHash(anyString());
     }
 }

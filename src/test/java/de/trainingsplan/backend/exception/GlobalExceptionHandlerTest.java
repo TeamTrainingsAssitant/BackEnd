@@ -6,6 +6,7 @@ import de.trainingsplan.backend.controller.dto.MessageResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.ErrorResponseException;
 
 class GlobalExceptionHandlerTest {
 
@@ -26,6 +27,19 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
+    }
+
+    @Test
+    void springClientErrorsKeepTheirStatus() {
+        ResponseEntity<MessageResponse> notFound =
+                handler.handleUnexpected(new ErrorResponseException(HttpStatus.NOT_FOUND));
+        ResponseEntity<MessageResponse> notAllowed =
+                handler.handleUnexpected(new ErrorResponseException(HttpStatus.METHOD_NOT_ALLOWED));
+
+        assertThat(notFound.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(notFound.getBody()).isEqualTo(new MessageResponse("Not found."));
+        assertThat(notAllowed.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+        assertThat(notAllowed.getBody()).isEqualTo(new MessageResponse("Request not supported."));
     }
 
     @Test
