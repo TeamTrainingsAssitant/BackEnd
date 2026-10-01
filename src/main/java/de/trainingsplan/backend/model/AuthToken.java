@@ -25,7 +25,8 @@ public class AuthToken {
     @Column(nullable = false, unique = true, length = 64)
     private String tokenHash;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    // EAGER: der Auth-Filter liest den User außerhalb einer Session (vor dem MVC-Layer)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 

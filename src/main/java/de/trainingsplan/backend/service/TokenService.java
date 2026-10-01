@@ -65,7 +65,7 @@ public class TokenService {
         return authTokenRepository.deleteByTokenHash(hash(token)) > 0;
     }
 
-    static String hash(String token) {
+    public static String hash(String token) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest(token.getBytes(StandardCharsets.UTF_8));

@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import de.trainingsplan.backend.model.User;
+import de.trainingsplan.backend.repository.AuthTokenRepository;
 import de.trainingsplan.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,8 +27,12 @@ class UserControllerTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private AuthTokenRepository authTokenRepository;
+
     @BeforeEach
     void cleanDb() {
+        authTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
 
