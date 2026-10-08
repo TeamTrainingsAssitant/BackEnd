@@ -95,4 +95,19 @@ class PlanServiceTest {
         planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest(null));
         assertThat(exercise.getNote()).isNull();
     }
+
+    @Test
+    void deleteExerciseRemovesItAndMovesFollowingExercisesUp() {
+        PlanExercise second = new PlanExercise(plan, "a", "Kniebeugen", null, List.of(), List.of(), 2, null);
+        PlanExercise third = new PlanExercise(plan, "b", "Rudern", null, List.of(), List.of(), 3, null);
+        PlanExercise fourth = new PlanExercise(plan, "c", "Bizeps-Curls", null, List.of(), List.of(), 4, null);
+        when(planExerciseRepository.findByIdAndPlanId(7L, PLAN_ID)).thenReturn(Optional.of(third));
+        when(planExerciseRepository.findByPlanIdAndPositionGreaterThan(PLAN_ID, 3)).thenReturn(List.of(fourth));
+
+        planService.deleteExercise(user, PLAN_ID, 7L);
+
+        verify(planExerciseRepository).delete(third);
+        assertThat(second.getPosition()).isEqualTo(2);
+        assertThat(fourth.getPosition()).isEqualTo(3);
+    }
 }
