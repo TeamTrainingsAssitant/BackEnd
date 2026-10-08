@@ -71,6 +71,11 @@ public class PlanExercise {
         this.note = note;
     }
 
+    /** Rückt eine Position nach vorne, wenn davor eine Übung entfernt wurde. */
+    public void moveUp() {
+        this.position--;
+    }
+
     public Long getId() {
         return id;
     }
