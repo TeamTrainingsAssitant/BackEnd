@@ -1,9 +1,12 @@
 package de.trainingsplan.backend.service;
 
+import de.trainingsplan.backend.controller.dto.PlanExerciseRequest;
 import de.trainingsplan.backend.controller.dto.PlanRequest;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.Plan;
+import de.trainingsplan.backend.model.PlanExercise;
 import de.trainingsplan.backend.model.User;
+import de.trainingsplan.backend.repository.PlanExerciseRepository;
 import de.trainingsplan.backend.repository.PlanRepository;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -15,8 +18,14 @@ public class PlanService {
 
     private final PlanRepository planRepository;
 
-    public PlanService(PlanRepository planRepository) {
+    private final PlanExerciseRepository planExerciseRepository;
+    private final ExerciseDbClient exerciseDbClient;
+
+    public PlanService(PlanRepository planRepository, PlanExerciseRepository planExerciseRepository,
+            ExerciseDbClient exerciseDbClient) {
         this.planRepository = planRepository;
+        this.planExerciseRepository = planExerciseRepository;
+        this.exerciseDbClient = exerciseDbClient;
     }
 
     @Transactional(readOnly = true)
@@ -44,6 +53,18 @@ public class PlanService {
     @Transactional
     public void delete(User user, Long planId) {
         planRepository.delete(findOwnPlan(user, planId));
+    }
+
+    /** Hängt eine Übung hinten an den Plan an. Name, gifUrl und Muskeln holt das Backend von ExerciseDB. */
+    @Transactional
+    public PlanExercise addExercise(User user, Long planId, PlanExerciseRequest request) {
+        Plan plan = findOwnPlan(user, planId);
+        ExerciseDbClient.ExternalExercise external = exerciseDbClient.getExercise(request.externalId().trim());
+        int position = planExerciseRepository.countByPlanId(planId) + 1;
+        PlanExercise exercise = new PlanExercise(plan, external.externalId(), external.name(), external.gifUrl(),
+                external.primaryMuscleGroups(), external.secondaryMuscleGroups(), position, request.note());
+        plan.touch();
+        return planExerciseRepository.save(exercise);
     }
 
     /** Fremde und unbekannte Pläne verhalten sich gleich: 404. */

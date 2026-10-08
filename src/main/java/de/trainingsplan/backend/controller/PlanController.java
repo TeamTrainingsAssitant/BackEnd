@@ -1,6 +1,8 @@
 package de.trainingsplan.backend.controller;
 
 import de.trainingsplan.backend.controller.dto.MessageResponse;
+import de.trainingsplan.backend.controller.dto.PlanExerciseRequest;
+import de.trainingsplan.backend.controller.dto.PlanExerciseResponse;
 import de.trainingsplan.backend.controller.dto.PlanListItemResponse;
 import de.trainingsplan.backend.controller.dto.PlanRequest;
 import de.trainingsplan.backend.controller.dto.PlanResponse;
@@ -60,5 +62,12 @@ public class PlanController {
     public MessageResponse delete(@AuthenticationPrincipal User user, @PathVariable Long planId) {
         planService.delete(user, planId);
         return new MessageResponse("Plan deleted.");
+    }
+
+    @PostMapping("/{planId}/exercises")
+    public ResponseEntity<PlanExerciseResponse> addExercise(@AuthenticationPrincipal User user,
+            @PathVariable Long planId, @Valid @RequestBody PlanExerciseRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(PlanExerciseResponse.from(planService.addExercise(user, planId, request)));
     }
 }
