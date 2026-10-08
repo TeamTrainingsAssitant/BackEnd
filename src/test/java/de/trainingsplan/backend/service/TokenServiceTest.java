@@ -3,6 +3,7 @@ package de.trainingsplan.backend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -18,6 +19,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 class TokenServiceTest {
 
@@ -101,5 +103,78 @@ class TokenServiceTest {
         assertThat(tokenService.revokeToken(null)).isFalse();
         assertThat(tokenService.revokeToken(" ")).isFalse();
         verify(authTokenRepository, never()).deleteByTokenHash(anyString());
+    }
+
+    @Test
+    void hashMatchesKnownSha256TestVector() {
+        // Standard-Testvektor für SHA-256("abc")
+        assertThat(TokenService.hash("abc"))
+                .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    }
+
+    @Test
+    void hashIsDeterministicLowercaseHexOf64Characters() {
+        String hash = TokenService.hash("some-token");
+
+        assertThat(hash).isEqualTo(TokenService.hash("some-token"));
+        assertThat(hash).matches("[0-9a-f]{64}");
+    }
+
+    @Test
+    void hashDiffersForDifferentInputs() {
+        assertThat(TokenService.hash("token-a")).isNotEqualTo(TokenService.hash("token-b"));
+    }
+
+    @Test
+    void createTokenIsUrlSafeBase64WithoutPadding() {
+        // 32 Zufallsbytes ergeben ohne Padding genau 43 Zeichen
+        assertThat(tokenService.createToken(user)).matches("[A-Za-z0-9_-]{43}");
+    }
+
+    @Test
+    void createTokenCleansUpExpiredTokensBeforeSavingTheNewOne() {
+        Instant before = Instant.now();
+
+        tokenService.createToken(user);
+
+        InOrder order = inOrder(authTokenRepository);
+        ArgumentCaptor<Instant> cutoff = ArgumentCaptor.forClass(Instant.class);
+        order.verify(authTokenRepository).deleteByExpiresAtBefore(cutoff.capture());
+        order.verify(authTokenRepository).save(any(AuthToken.class));
+        assertThat(cutoff.getValue()).isBetween(before, Instant.now());
+    }
+
+    @Test
+    void createTokenUsesConfiguredTtl() {
+        TokenService shortLived = new TokenService(authTokenRepository, Duration.ofMinutes(30));
+        Instant before = Instant.now();
+
+        shortLived.createToken(user);
+
+        ArgumentCaptor<AuthToken> saved = ArgumentCaptor.forClass(AuthToken.class);
+        verify(authTokenRepository).save(saved.capture());
+        assertThat(saved.getValue().getExpiresAt())
+                .isBetween(before.plus(Duration.ofMinutes(30)), Instant.now().plus(Duration.ofMinutes(30)));
+    }
+
+    @Test
+    void findUserByTokenQueriesWithHashAndCurrentTimeNeverWithPlaintext() {
+        Instant before = Instant.now();
+
+        tokenService.findUserByToken("abc");
+
+        ArgumentCaptor<String> hash = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Instant> now = ArgumentCaptor.forClass(Instant.class);
+        verify(authTokenRepository).findByTokenHashAndExpiresAtAfter(hash.capture(), now.capture());
+        assertThat(hash.getValue()).isEqualTo(TokenService.hash("abc")).isNotEqualTo("abc");
+        assertThat(now.getValue()).isBetween(before, Instant.now());
+    }
+
+    @Test
+    void revokeTokenDeletesByHashNeverByPlaintext() {
+        tokenService.revokeToken("abc");
+
+        verify(authTokenRepository).deleteByTokenHash(TokenService.hash("abc"));
+        verify(authTokenRepository, never()).deleteByTokenHash("abc");
     }
 }
