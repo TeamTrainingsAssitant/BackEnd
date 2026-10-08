@@ -1,6 +1,7 @@
 package de.trainingsplan.backend.service;
 
 import de.trainingsplan.backend.controller.dto.PlanExerciseRequest;
+import de.trainingsplan.backend.controller.dto.PlanExerciseUpdateRequest;
 import de.trainingsplan.backend.controller.dto.PlanRequest;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.Plan;
@@ -65,6 +66,18 @@ public class PlanService {
                 external.primaryMuscleGroups(), external.secondaryMuscleGroups(), position, request.note());
         plan.touch();
         return planExerciseRepository.save(exercise);
+    }
+
+    /** Ändert die Note einer Übung im Plan, null entfernt sie. */
+    @Transactional
+    public PlanExercise updateExercise(User user, Long planId, Long planExerciseId,
+            PlanExerciseUpdateRequest request) {
+        Plan plan = findOwnPlan(user, planId);
+        PlanExercise exercise = planExerciseRepository.findByIdAndPlanId(planExerciseId, planId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exercise not found."));
+        exercise.updateNote(request.note());
+        plan.touch();
+        return exercise;
     }
 
     /** Fremde und unbekannte Pläne verhalten sich gleich: 404. */
