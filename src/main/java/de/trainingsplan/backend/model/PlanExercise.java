@@ -66,6 +66,11 @@ public class PlanExercise {
         this.note = note;
     }
 
+    /** Ändert die Note, null entfernt sie. */
+    public void updateNote(String note) {
+        this.note = note;
+    }
+
     public Long getId() {
         return id;
     }
