@@ -80,6 +80,18 @@ public class PlanService {
         return exercise;
     }
 
+    /** Entfernt eine Übung aus dem Plan, die übrigen rücken in der Position nach. */
+    @Transactional
+    public void deleteExercise(User user, Long planId, Long planExerciseId) {
+        Plan plan = findOwnPlan(user, planId);
+        PlanExercise exercise = planExerciseRepository.findByIdAndPlanId(planExerciseId, planId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exercise not found."));
+        planExerciseRepository.findByPlanIdAndPositionGreaterThan(planId, exercise.getPosition())
+                .forEach(PlanExercise::moveUp);
+        planExerciseRepository.delete(exercise);
+        plan.touch();
+    }
+
     /** Fremde und unbekannte Pläne verhalten sich gleich: 404. */
     private Plan findOwnPlan(User user, Long planId) {
         return planRepository.findByIdAndUserId(planId, user.getId())
