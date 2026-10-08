@@ -1,12 +1,16 @@
 package de.trainingsplan.backend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import de.trainingsplan.backend.controller.dto.PlanExerciseRequest;
+import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.Plan;
 import de.trainingsplan.backend.model.PlanExercise;
 import de.trainingsplan.backend.model.User;
@@ -17,6 +21,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpStatus;
 
 class PlanServiceTest {
 
@@ -62,5 +67,18 @@ class PlanServiceTest {
         assertThat(exercise.getSecondaryMuscleGroups()).containsExactly("deltoids", "pectorals");
         assertThat(exercise.getPosition()).isEqualTo(3);
         assertThat(exercise.getNote()).isEqualTo("Sitz 4");
+    }
+
+    @Test
+    void addExerciseToForeignPlanIsNotFound() {
+        when(planRepository.findByIdAndUserId(99L, USER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> planService.addExercise(user, 99L, new PlanExerciseRequest("01qpYSe", null)))
+                .isInstanceOfSatisfying(ApiException.class, e -> {
+                    assertThat(e.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(e.getMessage()).isEqualTo("Plan not found.");
+                });
+        verifyNoInteractions(exerciseDbClient);
+        verify(planExerciseRepository, never()).save(any());
     }
 }
