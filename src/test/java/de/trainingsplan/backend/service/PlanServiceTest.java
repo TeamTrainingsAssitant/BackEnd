@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import de.trainingsplan.backend.controller.dto.PlanExerciseRequest;
+import de.trainingsplan.backend.controller.dto.PlanExerciseUpdateRequest;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.Plan;
 import de.trainingsplan.backend.model.PlanExercise;
@@ -80,5 +81,18 @@ class PlanServiceTest {
                 });
         verifyNoInteractions(exerciseDbClient);
         verify(planExerciseRepository, never()).save(any());
+    }
+
+    @Test
+    void updateExerciseChangesAndRemovesNote() {
+        PlanExercise exercise = new PlanExercise(plan, "01qpYSe", "upward facing dog", null,
+                List.of(), List.of(), 1, "alte Note");
+        when(planExerciseRepository.findByIdAndPlanId(7L, PLAN_ID)).thenReturn(Optional.of(exercise));
+
+        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest("Sitz 4"));
+        assertThat(exercise.getNote()).isEqualTo("Sitz 4");
+
+        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest(null));
+        assertThat(exercise.getNote()).isNull();
     }
 }
