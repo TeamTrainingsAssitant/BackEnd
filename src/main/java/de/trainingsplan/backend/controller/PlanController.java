@@ -77,4 +77,11 @@ public class PlanController {
             @PathVariable Long planExerciseId, @Valid @RequestBody PlanExerciseUpdateRequest request) {
         return PlanExerciseResponse.from(planService.updateExercise(user, planId, planExerciseId, request));
     }
+
+    @DeleteMapping("/{planId}/exercises/{planExerciseId}")
+    public MessageResponse deleteExercise(@AuthenticationPrincipal User user, @PathVariable Long planId,
+            @PathVariable Long planExerciseId) {
+        planService.deleteExercise(user, planId, planExerciseId);
+        return new MessageResponse("Exercise removed.");
+    }
 }
