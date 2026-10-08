@@ -2,6 +2,7 @@ package de.trainingsplan.backend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -88,5 +89,36 @@ class AuthServiceTest {
         when(tokenService.revokeToken("unknown")).thenReturn(false);
 
         assertBadRequest(() -> authService.logout("unknown"), "Token wrong.");
+    }
+
+    @Test
+    void emptyEmailOrPasswordIsBadRequest() {
+        assertBadRequest(() -> authService.login("", "super-safe"), "Password wrong.");
+        assertBadRequest(() -> authService.login("max@mosbach.de", ""), "Password wrong.");
+        verify(tokenService, never()).createToken(any());
+    }
+
+    @Test
+    void unknownEmailCreatesNoToken() {
+        assertBadRequest(() -> authService.login("nobody@mosbach.de", "super-safe"), "Password wrong.");
+
+        verify(tokenService, never()).createToken(any());
+    }
+
+    @Test
+    void passwordIsNotTrimmedAtLogin() {
+        assertBadRequest(() -> authService.login("max@mosbach.de", "super-safe "), "Password wrong.");
+        assertBadRequest(() -> authService.login("max@mosbach.de", " super-safe"), "Password wrong.");
+    }
+
+    @Test
+    void passwordIsCaseSensitive() {
+        assertBadRequest(() -> authService.login("max@mosbach.de", "SUPER-SAFE"), "Password wrong.");
+    }
+
+    @Test
+    void logoutWithMissingOrEmptyTokenIsBadRequest() {
+        assertBadRequest(() -> authService.logout(null), "Token wrong.");
+        assertBadRequest(() -> authService.logout(""), "Token wrong.");
     }
 }
