@@ -12,6 +12,27 @@ mvnw.cmd test              # reine Unit-Tests, keine Datenbank nötig
 Es gibt bewusst nur Unit-Tests (Mockito, ohne Spring-Kontext und ohne Datenbank).
 Das Zusammenspiel mit der Datenbank wird gegen die deployte Heroku-Version getestet.
 
+### Aufbau der Tests
+
+Die Tests liegen unter `src/test/java` im selben Package wie die getestete Klasse und heißen `<Klasse>Test`.
+
+| Package | Was geprüft wird |
+|---|---|
+| `controller` (+ `dto`) | Antwort-Status und -Meldungen, Weitergabe an den Service, DTO-Mapping, Validierungsregeln |
+| `service` | Fachlogik: Registrierung, Login, Token (Hash, Ablauf, Aufräumen), Pläne inkl. Besitzprüfung |
+| `security` | `TokenAuthenticationFilter`: Bearer-Header, Randfälle, Kette läuft immer weiter |
+| `exception` | `GlobalExceptionHandler`: Status und einheitliches Fehlerformat |
+| `config` | `PasswordEncoder` (BCrypt) |
+| `model` | Logik in Entities (z. B. `Plan.update`) |
+
+So wird getestet:
+
+- Abhängigkeiten (Repositories, andere Services) werden mit `mock(...)` ersetzt, die Klasse selbst per Konstruktor gebaut.
+- Assertions mit AssertJ, aufgezeichnete Argumente mit `ArgumentCaptor`.
+- Entities haben keinen ID-Setter; die ID wird im Test mit `ReflectionTestUtils.setField(obj, "id", 1L)` gesetzt.
+- Zeit wird nicht eingefroren, sondern mit Zeitfenstern geprüft (`isBetween(vorher, nachher)`).
+- Bewusst nicht per Unit-Test geprüft: die `SecurityFilterChain` (öffentliche Routen, 401-Antwort), weil dafür ein Spring-Kontext nötig wäre.
+
 `JAVA_HOME` muss auf ein JDK 25 zeigen. Die DB-Verbindung lässt sich über `JDBC_DATABASE_URL`,
 `JDBC_DATABASE_USERNAME` und `JDBC_DATABASE_PASSWORD` überschreiben (auf Heroku setzt der Buildpack sie selbst).
 
