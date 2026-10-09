@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import de.trainingsplan.backend.controller.dto.RegisterRequest;
@@ -14,6 +15,8 @@ import de.trainingsplan.backend.model.User;
 import de.trainingsplan.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -106,5 +109,81 @@ class UserServiceTest {
         assertRejected(new RegisterRequest(null, "max@mosbach.de", "super-safe"),
                 HttpStatus.BAD_REQUEST, "Username missing.");
         assertRejected(null, HttpStatus.BAD_REQUEST, "Username missing.");
+    }
+
+    @Test
+    void registerReturnsTheSavedUser() {
+        User user = userService.register(new RegisterRequest("max", "max@mosbach.de", "super-safe"));
+
+        assertThat(user.getUsername()).isEqualTo("max");
+        assertThat(user.getEmail()).isEqualTo("max@mosbach.de");
+    }
+
+    @Test
+    void passwordLengthBoundaryIs8Characters() {
+        assertRejected(new RegisterRequest("max", "max@mosbach.de", "1234567"),
+                HttpStatus.BAD_REQUEST, "Email or password invalid.");
+
+        assertThat(userService.register(new RegisterRequest("max", "max@mosbach.de", "12345678"))).isNotNull();
+    }
+
+    @Test
+    void passwordByteBoundaryIs72Bytes() {
+        assertRejected(new RegisterRequest("max", "max@mosbach.de", "a".repeat(73)),
+                HttpStatus.BAD_REQUEST, "Email or password invalid.");
+
+        assertThat(userService.register(new RegisterRequest("max", "max@mosbach.de", "a".repeat(72)))).isNotNull();
+    }
+
+    @Test
+    void passwordLimitCountsBytesNotCharacters() {
+        // "ä" hat 2 Bytes in UTF-8: 36 Zeichen = 72 Bytes (ok), 40 Zeichen = 80 Bytes (zu lang)
+        assertRejected(new RegisterRequest("max", "max@mosbach.de", "ä".repeat(40)),
+                HttpStatus.BAD_REQUEST, "Email or password invalid.");
+
+        assertThat(userService.register(new RegisterRequest("max", "max@mosbach.de", "ä".repeat(36)))).isNotNull();
+    }
+
+    @Test
+    void passwordIsStoredExactlyAsGivenWithoutTrimming() {
+        userService.register(new RegisterRequest("max", "max@mosbach.de", "  secret1  "));
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).saveAndFlush(saved.capture());
+        assertThat(passwordEncoder.matches("  secret1  ", saved.getValue().getPasswordHash())).isTrue();
+        assertThat(passwordEncoder.matches("secret1", saved.getValue().getPasswordHash())).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   ", "max@mosbach", "@mosbach.de", "max@@mosbach.de", "max@mosbach.",
+            "max @mosbach.de", "max@mos bach.de"})
+    void malformedEmailsAreRejected(String email) {
+        assertRejected(new RegisterRequest("max", email, "super-safe"),
+                HttpStatus.BAD_REQUEST, "Email or password invalid.");
+    }
+
+    @Test
+    void usernameIsCheckedBeforeEmailAndPassword() {
+        assertRejected(new RegisterRequest(" ", "not-an-email", "x"), HttpStatus.BAD_REQUEST, "Username missing.");
+    }
+
+    @Test
+    void invalidInputIsRejectedBeforeAskingTheDatabase() {
+        assertRejected(new RegisterRequest("max", "not-an-email", "super-safe"),
+                HttpStatus.BAD_REQUEST, "Email or password invalid.");
+
+        verify(userRepository, never()).existsByEmail(any());
+    }
+
+    @Test
+    void duplicateEmailIsRejectedBeforePasswordIsHashed() {
+        PasswordEncoder encoder = mock(PasswordEncoder.class);
+        UserService service = new UserService(userRepository, encoder);
+        when(userRepository.existsByEmail("max@mosbach.de")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.register(new RegisterRequest("max", "max@mosbach.de", "super-safe")))
+                .isInstanceOfSatisfying(ApiException.class,
+                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT));
+        verifyNoInteractions(encoder);
     }
 }
