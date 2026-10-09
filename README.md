@@ -44,6 +44,8 @@ So wird getestet:
 | POST | `/auth` | öffentlich | Login mit `email` und `password`, liefert ein Token. |
 | DELETE | `/auth` | öffentlich | Logout. Das Token steht im Body und wird serverseitig gelöscht. |
 | GET | `/users/me` | Token nötig | Profil des angemeldeten Benutzers. |
+| GET | `/users/me/export` | Token nötig | Alle persönlichen Daten als `{"user":{...},"plans":[...]}`, Pläne mit Übungen in Reihenfolge. |
+| DELETE | `/users/me` | Token nötig | Konto löschen. Das Passwort steht im Body (`{"password":"..."}`). Löscht auch alle Pläne und Tokens. Bei falschem Passwort `400`. |
 
 **Alle anderen Endpunkte verlangen den Header `Authorization: Bearer <token>`.**
 Ohne gültiges Token antwortet das Backend mit `401 {"message":"Not authenticated."}`.
@@ -63,6 +65,11 @@ curl -X POST http://localhost:8080/api/v1/auth -H "Content-Type: application/jso
   -d '{"email":"max@mosbach.de","password":"super-safe"}'
 
 curl http://localhost:8080/api/v1/users/me -H "Authorization: Bearer <token>"
+
+curl http://localhost:8080/api/v1/users/me/export -H "Authorization: Bearer <token>"
+
+curl -X DELETE http://localhost:8080/api/v1/users/me -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" -d '{"password":"super-safe"}'
 
 curl -X DELETE http://localhost:8080/api/v1/auth -H "Content-Type: application/json" \
   -d '{"token":"<token>"}'
