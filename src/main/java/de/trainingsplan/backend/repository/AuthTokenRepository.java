@@ -15,4 +15,7 @@ public interface AuthTokenRepository extends JpaRepository<AuthToken, Long> {
     long deleteByExpiresAtBefore(Instant now);
 
     long deleteByTokenHash(String tokenHash);
+
+    /** Alle Tokens eines Benutzers, z. B. beim Löschen des Kontos. */
+    long deleteByUserId(Long userId);
 }

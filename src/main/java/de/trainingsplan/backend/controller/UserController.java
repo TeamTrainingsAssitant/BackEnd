@@ -1,5 +1,7 @@
 package de.trainingsplan.backend.controller;
 
+import de.trainingsplan.backend.controller.dto.DeleteUserRequest;
+import de.trainingsplan.backend.controller.dto.MessageResponse;
 import de.trainingsplan.backend.controller.dto.RegisterRequest;
 import de.trainingsplan.backend.controller.dto.RegisterResponse;
 import de.trainingsplan.backend.controller.dto.UserResponse;
@@ -8,6 +10,7 @@ import de.trainingsplan.backend.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,5 +37,11 @@ public class UserController {
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal User user) {
         return UserResponse.from(user);
+    }
+
+    @DeleteMapping("/me")
+    public MessageResponse delete(@AuthenticationPrincipal User user, @RequestBody DeleteUserRequest request) {
+        userService.deleteAccount(user, request.password());
+        return new MessageResponse("Account deleted.");
     }
 }

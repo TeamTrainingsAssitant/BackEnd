@@ -3,6 +3,8 @@ package de.trainingsplan.backend.service;
 import de.trainingsplan.backend.controller.dto.RegisterRequest;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.User;
+import de.trainingsplan.backend.repository.AuthTokenRepository;
+import de.trainingsplan.backend.repository.PlanRepository;
 import de.trainingsplan.backend.repository.UserRepository;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
@@ -11,6 +13,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
@@ -22,10 +25,27 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PlanRepository planRepository;
+    private final AuthTokenRepository authTokenRepository;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+            PlanRepository planRepository, AuthTokenRepository authTokenRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.planRepository = planRepository;
+        this.authTokenRepository = authTokenRepository;
+    }
+
+    /** Löscht das Konto samt Plänen, Übungen und Tokens, nachdem das Passwort bestätigt wurde. */
+    @Transactional
+    public void deleteAccount(User user, String password) {
+        if (password == null || !passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Password wrong.");
+        }
+        authTokenRepository.deleteByUserId(user.getId());
+        planRepository.deleteAll(planRepository.findByUserIdOrderByUpdatedAtDesc(user.getId()));
+        planRepository.flush();
+        userRepository.delete(user);
     }
 
     public User register(RegisterRequest request) {

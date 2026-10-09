@@ -12,6 +12,8 @@ import static org.mockito.Mockito.when;
 import de.trainingsplan.backend.controller.dto.RegisterRequest;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.User;
+import de.trainingsplan.backend.repository.AuthTokenRepository;
+import de.trainingsplan.backend.repository.PlanRepository;
 import de.trainingsplan.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,13 +29,17 @@ class UserServiceTest {
 
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
+    private PlanRepository planRepository;
+    private AuthTokenRepository authTokenRepository;
     private UserService userService;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
         passwordEncoder = new BCryptPasswordEncoder();
-        userService = new UserService(userRepository, passwordEncoder);
+        planRepository = mock(PlanRepository.class);
+        authTokenRepository = mock(AuthTokenRepository.class);
+        userService = new UserService(userRepository, passwordEncoder, planRepository, authTokenRepository);
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -178,7 +184,7 @@ class UserServiceTest {
     @Test
     void duplicateEmailIsRejectedBeforePasswordIsHashed() {
         PasswordEncoder encoder = mock(PasswordEncoder.class);
-        UserService service = new UserService(userRepository, encoder);
+        UserService service = new UserService(userRepository, encoder, planRepository, authTokenRepository);
         when(userRepository.existsByEmail("max@mosbach.de")).thenReturn(true);
 
         assertThatThrownBy(() -> service.register(new RegisterRequest("max", "max@mosbach.de", "super-safe")))
