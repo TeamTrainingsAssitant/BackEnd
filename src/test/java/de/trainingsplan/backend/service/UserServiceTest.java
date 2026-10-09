@@ -13,6 +13,7 @@ import de.trainingsplan.backend.controller.dto.RegisterRequest;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.User;
 import de.trainingsplan.backend.repository.AuthTokenRepository;
+import de.trainingsplan.backend.repository.PlanExerciseRepository;
 import de.trainingsplan.backend.repository.PlanRepository;
 import de.trainingsplan.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,7 @@ class UserServiceTest {
     private PasswordEncoder passwordEncoder;
     private PlanRepository planRepository;
     private AuthTokenRepository authTokenRepository;
+    private PlanExerciseRepository planExerciseRepository;
     private UserService userService;
 
     @BeforeEach
@@ -39,7 +41,9 @@ class UserServiceTest {
         passwordEncoder = new BCryptPasswordEncoder();
         planRepository = mock(PlanRepository.class);
         authTokenRepository = mock(AuthTokenRepository.class);
-        userService = new UserService(userRepository, passwordEncoder, planRepository, authTokenRepository);
+        planExerciseRepository = mock(PlanExerciseRepository.class);
+        userService = new UserService(userRepository, passwordEncoder, planRepository, authTokenRepository,
+                planExerciseRepository);
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -184,7 +188,8 @@ class UserServiceTest {
     @Test
     void duplicateEmailIsRejectedBeforePasswordIsHashed() {
         PasswordEncoder encoder = mock(PasswordEncoder.class);
-        UserService service = new UserService(userRepository, encoder, planRepository, authTokenRepository);
+        UserService service = new UserService(userRepository, encoder, planRepository, authTokenRepository,
+                planExerciseRepository);
         when(userRepository.existsByEmail("max@mosbach.de")).thenReturn(true);
 
         assertThatThrownBy(() -> service.register(new RegisterRequest("max", "max@mosbach.de", "super-safe")))

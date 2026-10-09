@@ -1,12 +1,17 @@
 package de.trainingsplan.backend.service;
 
+import de.trainingsplan.backend.controller.dto.PlanExportResponse;
 import de.trainingsplan.backend.controller.dto.RegisterRequest;
+import de.trainingsplan.backend.controller.dto.UserExportResponse;
+import de.trainingsplan.backend.controller.dto.UserResponse;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.User;
 import de.trainingsplan.backend.repository.AuthTokenRepository;
+import de.trainingsplan.backend.repository.PlanExerciseRepository;
 import de.trainingsplan.backend.repository.PlanRepository;
 import de.trainingsplan.backend.repository.UserRepository;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -27,13 +32,26 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final PlanRepository planRepository;
     private final AuthTokenRepository authTokenRepository;
+    private final PlanExerciseRepository planExerciseRepository;
 
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-            PlanRepository planRepository, AuthTokenRepository authTokenRepository) {
+            PlanRepository planRepository, AuthTokenRepository authTokenRepository,
+            PlanExerciseRepository planExerciseRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.planRepository = planRepository;
         this.authTokenRepository = authTokenRepository;
+        this.planExerciseRepository = planExerciseRepository;
+    }
+
+    /** Alle persönlichen Daten des Benutzers: Profil und Pläne mit Übungen. */
+    @Transactional(readOnly = true)
+    public UserExportResponse export(User user) {
+        List<PlanExportResponse> plans = planRepository.findByUserIdOrderByUpdatedAtDesc(user.getId()).stream()
+                .map(plan -> PlanExportResponse.from(plan,
+                        planExerciseRepository.findByPlanIdOrderByPositionAsc(plan.getId())))
+                .toList();
+        return new UserExportResponse(UserResponse.from(user), plans);
     }
 
     /** Löscht das Konto samt Plänen, Übungen und Tokens, nachdem das Passwort bestätigt wurde. */

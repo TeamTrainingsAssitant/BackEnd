@@ -4,6 +4,7 @@ import de.trainingsplan.backend.controller.dto.DeleteUserRequest;
 import de.trainingsplan.backend.controller.dto.MessageResponse;
 import de.trainingsplan.backend.controller.dto.RegisterRequest;
 import de.trainingsplan.backend.controller.dto.RegisterResponse;
+import de.trainingsplan.backend.controller.dto.UserExportResponse;
 import de.trainingsplan.backend.controller.dto.UserResponse;
 import de.trainingsplan.backend.model.User;
 import de.trainingsplan.backend.service.UserService;
@@ -37,6 +38,11 @@ public class UserController {
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal User user) {
         return UserResponse.from(user);
+    }
+
+    @GetMapping("/me/export")
+    public UserExportResponse export(@AuthenticationPrincipal User user) {
+        return userService.export(user);
     }
 
     @DeleteMapping("/me")
