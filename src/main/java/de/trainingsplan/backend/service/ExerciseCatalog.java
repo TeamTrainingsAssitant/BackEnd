@@ -24,7 +24,11 @@ public class ExerciseCatalog {
 
     private static final Logger log = LoggerFactory.getLogger(ExerciseCatalog.class);
 
+    /** So oft wird eine Seite versucht, bevor das Laden abgebrochen wird. */
     private static final int MAX_ATTEMPTS = 3;
+
+    /** Schutz vor einer Endlosschleife: ExerciseDB hat etwa 60 Seiten (1500 Übungen / 25). */
+    static final int MAX_PAGES = 200;
 
     private final ExerciseDbClient client;
     private final long pauseMillis;
@@ -47,7 +51,17 @@ public class ExerciseCatalog {
     /** Startet das Laden nach dem Start der Anwendung in einem eigenen Thread. */
     @EventListener(ApplicationReadyEvent.class)
     public void loadInBackground() {
-        new Thread(this::load, "exercise-catalog-loader").start();
+        new Thread(this::loadUntilLoaded, "exercise-catalog-loader").start();
+    }
+
+    /** Versucht das Laden so lange, bis es klappt (z. B. wenn das Rate-Limit gerade greift). */
+    void loadUntilLoaded() {
+        while (!isLoaded() && !Thread.currentThread().isInterrupted()) {
+            load();
+            if (!isLoaded()) {
+                pause(retryMillis);
+            }
+        }
     }
 
     /**
@@ -58,12 +72,14 @@ public class ExerciseCatalog {
         try {
             List<ExternalExercise> loaded = new ArrayList<>();
             String cursor = null;
+            int pages = 0;
             do {
                 ExercisePage page = loadPageWithRetry(cursor);
                 loaded.addAll(page.exercises());
                 cursor = page.nextCursor();
+                pages++;
                 pause(pauseMillis);
-            } while (cursor != null);
+            } while (cursor != null && pages < MAX_PAGES);
 
             List<String> loadedMuscles = client.getMuscles();
             List<String> loadedBodyParts = client.getBodyParts();
@@ -82,17 +98,21 @@ public class ExerciseCatalog {
         }
     }
 
-    /** Holt eine Seite, bei einem Fehler (z. B. Rate-Limit) wird nach einer Pause neu versucht. */
+    /** Holt eine Seite. Bei einem Fehler (z. B. Rate-Limit) wird nach einer Pause neu versucht. */
     private ExercisePage loadPageWithRetry(String cursor) {
-        for (int attempt = 1; attempt < MAX_ATTEMPTS; attempt++) {
+        int attempt = 1;
+        while (true) {
             try {
                 return client.listExercises(cursor);
             } catch (ApiException e) {
-                log.warn("ExerciseDB page failed (attempt {}), waiting before retry", attempt);
+                if (attempt == MAX_ATTEMPTS) {
+                    throw e;
+                }
+                log.warn("ExerciseDB page failed (attempt {} of {}), waiting before retry", attempt, MAX_ATTEMPTS);
+                attempt++;
                 pause(retryMillis);
             }
         }
-        return client.listExercises(cursor);
     }
 
     private void pause(long millis) {

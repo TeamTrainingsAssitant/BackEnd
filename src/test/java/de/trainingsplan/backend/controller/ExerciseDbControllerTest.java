@@ -84,14 +84,38 @@ class ExerciseDbControllerTest {
         assertThat(controller.bodyParts()).containsExactly("chest");
     }
 
+    private void assertBadGateway(Runnable action) {
+        assertThatThrownBy(action::run).isInstanceOfSatisfying(ApiException.class, e -> {
+            assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+            assertThat(e.getMessage()).isEqualTo("ExerciseDB not reachable.");
+        });
+    }
+
     @Test
-    void everyEndpointIs502WhileCatalogIsNotLoaded() {
+    void listIs502WhileCatalogIsNotLoaded() {
         when(catalog.isLoaded()).thenReturn(false);
 
-        assertThatThrownBy(() -> controller.list(null, null, 0, 20)).isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> controller.get("x")).isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> controller.muscles()).isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> controller.bodyParts()).isInstanceOf(ApiException.class)
-                .satisfies(e -> assertThat(((ApiException) e).getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY));
+        assertBadGateway(() -> controller.list(null, null, 0, 20));
+    }
+
+    @Test
+    void getIs502WhileCatalogIsNotLoaded() {
+        when(catalog.isLoaded()).thenReturn(false);
+
+        assertBadGateway(() -> controller.get("EIeI8Vf"));
+    }
+
+    @Test
+    void musclesIs502WhileCatalogIsNotLoaded() {
+        when(catalog.isLoaded()).thenReturn(false);
+
+        assertBadGateway(() -> controller.muscles());
+    }
+
+    @Test
+    void bodyPartsIs502WhileCatalogIsNotLoaded() {
+        when(catalog.isLoaded()).thenReturn(false);
+
+        assertBadGateway(() -> controller.bodyParts());
     }
 }

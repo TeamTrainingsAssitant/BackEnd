@@ -4,7 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import de.trainingsplan.backend.exception.ApiException;
@@ -130,6 +133,34 @@ class ExerciseCatalogTest {
         assertEquals("2", result.exercises().get(0).externalId());
         // Offset hinter dem Ende: leere Liste, kein Fehler
         assertTrue(catalog.search(null, null, 10, 5).exercises().isEmpty());
+    }
+
+    @Test
+    void loadUntilLoadedTriesAgainAfterAFailedLoad() {
+        ApiException error = new ApiException(HttpStatus.BAD_GATEWAY, "ExerciseDB not reachable.");
+        // die ersten 3 Versuche (eine komplette Runde) schlagen fehl, danach klappt es
+        when(client.listExercises(null))
+                .thenThrow(error, error, error)
+                .thenReturn(new ExercisePage(List.of(exercise("a", "A")), null));
+        when(client.getMuscles()).thenReturn(List.of());
+        when(client.getBodyParts()).thenReturn(List.of());
+
+        catalog.loadUntilLoaded();
+
+        assertTrue(catalog.isLoaded());
+        assertEquals(1, catalog.getAll().size());
+    }
+
+    @Test
+    void loadStopsWhenCursorNeverEnds() {
+        // ExerciseDB liefert immer wieder einen nextCursor
+        when(client.listExercises(any())).thenReturn(new ExercisePage(List.of(exercise("a", "A")), "same"));
+        when(client.getMuscles()).thenReturn(List.of());
+        when(client.getBodyParts()).thenReturn(List.of());
+
+        catalog.load();
+
+        verify(client, times(ExerciseCatalog.MAX_PAGES)).listExercises(any());
     }
 
     @Test
