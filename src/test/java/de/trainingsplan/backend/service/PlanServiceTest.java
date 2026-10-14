@@ -77,7 +77,8 @@ class PlanServiceTest {
     void addExerciseAppendsAtEndWithDataFromExerciseDb() {
         when(exerciseDbClient.getExercise("01qpYSe")).thenReturn(new ExerciseDbClient.ExternalExercise(
                 "01qpYSe", "upward facing dog", "https://static.exercisedb.dev/media/01qpYSe.gif",
-                List.of("erector spinae"), List.of("deltoids", "pectorals")));
+                List.of("erector spinae"), List.of("deltoids", "pectorals"),
+                List.of("back"), List.of("bodyweight"), List.of()));
         when(planExerciseRepository.countByPlanId(PLAN_ID)).thenReturn(2);
 
         planService.addExercise(user, PLAN_ID, new PlanExerciseRequest(" 01qpYSe ", "Sitz 4"));
