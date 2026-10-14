@@ -35,6 +35,7 @@ class PlanServiceTest {
     private PlanRepository planRepository;
     private PlanExerciseRepository planExerciseRepository;
     private ExerciseDbClient exerciseDbClient;
+    private ExerciseCatalog exerciseCatalog;
     private PlanService planService;
     private User user;
     private User otherUser;
@@ -45,7 +46,8 @@ class PlanServiceTest {
         planRepository = mock(PlanRepository.class);
         planExerciseRepository = mock(PlanExerciseRepository.class);
         exerciseDbClient = mock(ExerciseDbClient.class);
-        planService = new PlanService(planRepository, planExerciseRepository, exerciseDbClient);
+        exerciseCatalog = mock(ExerciseCatalog.class);
+        planService = new PlanService(planRepository, planExerciseRepository, exerciseDbClient, exerciseCatalog);
 
         user = userWithId("max", USER_ID);
         otherUser = userWithId("anna", 2L);
@@ -71,6 +73,20 @@ class PlanServiceTest {
             assertThat(e.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
             assertThat(e.getMessage()).isEqualTo("Plan not found.");
         });
+    }
+
+    @Test
+    void addExerciseUsesCatalogWithoutCallingExerciseDb() {
+        when(exerciseCatalog.findById("01qpYSe")).thenReturn(new ExerciseDbClient.ExternalExercise(
+                "01qpYSe", "upward facing dog", "https://static.exercisedb.dev/media/01qpYSe.gif",
+                List.of("erector spinae"), List.of("deltoids"), List.of("back"), List.of(), List.of()));
+        when(planExerciseRepository.countByPlanId(PLAN_ID)).thenReturn(0);
+
+        PlanExercise result = planService.addExercise(user, PLAN_ID, new PlanExerciseRequest("01qpYSe", null));
+
+        assertThat(result.getName()).isEqualTo("upward facing dog");
+        assertThat(result.getPrimaryMuscleGroups()).containsExactly("erector spinae");
+        verify(exerciseDbClient, never()).getExercise(any());
     }
 
     @Test
