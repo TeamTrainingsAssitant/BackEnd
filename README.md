@@ -19,7 +19,7 @@ Die Tests liegen unter `src/test/java` im selben Package wie die getestete Klass
 | Package | Was geprüft wird |
 |---|---|
 | `controller` (+ `dto`) | Antwort-Status und -Meldungen, Weitergabe an den Service, DTO-Mapping, Validierungsregeln |
-| `service` | Fachlogik: Registrierung, Login, Token (Hash, Ablauf, Aufräumen), Pläne inkl. Besitzprüfung |
+| `service` | Fachlogik: Registrierung, Login, Token (Hash, Ablauf, Aufräumen), Pläne inkl. Besitzprüfung, Übungskatalog (Laden, Suche, Filter) |
 | `security` | `TokenAuthenticationFilter`: Bearer-Header, Randfälle, Kette läuft immer weiter |
 | `exception` | `GlobalExceptionHandler`: Status und einheitliches Fehlerformat |
 | `config` | `PasswordEncoder` (BCrypt) |
@@ -95,6 +95,7 @@ Jeder Fehler hat die Form `{ "message": "..." }`:
 | 404 | `Not found.` (unbekannte URL, nur mit gültigem Token; ohne Token kommt 401) |
 | 409 | `Email already registered.` |
 | 500 | `Internal server error.` (Details nur im Server-Log) |
+| 502 | `ExerciseDB not reachable.` (ExerciseDB nicht erreichbar oder Übungsliste noch nicht geladen) |
 
 ### Neue geschützte Endpunkte
 
@@ -102,3 +103,63 @@ Es muss nichts extra konfiguriert werden: Jeder neue Endpunkt ist automatisch ge
 Den angemeldeten Benutzer holt man im Controller mit `@AuthenticationPrincipal User user`.
 Fehler wirft man mit `throw new ApiException(HttpStatus.NOT_FOUND, "Plan not found.")`.
 Wenn ein Endpunkt öffentlich sein soll, muss er in `SecurityConfig` ergänzt werden.
+
+## ExerciseDB
+
+Die Übungen kommen von der ExerciseDB V1 (Free), `https://oss.exercisedb.dev/api/v1`.
+Nur nicht-kommerzielle Nutzung, im Frontend ist der Hinweis "Daten: ExerciseDB" Pflicht.
+Das Frontend spricht nur mit dem Backend, nie direkt mit ExerciseDB.
+
+| Methode | URI | Zugriff | Beschreibung |
+|---|---|---|---|
+| GET | `/exercisedb/exercises` | Token nötig | Übungsliste. Query: `name`, `muscles`, `offset` (Standard 0), `limit` (Standard 20, maximal 50). Antwort `{"total":12,"exercises":[...]}`. |
+| GET | `/exercisedb/exercises/{externalId}` | Token nötig | Details einer Übung inkl. `instructions`. Unbekannte ID: `404 "Exercise not found."`. |
+| GET | `/exercisedb/muscles` | Token nötig | Alle Muskelnamen als Liste, für die Filter-Auswahl. |
+| GET | `/exercisedb/bodyparts` | Token nötig | Alle Körperbereiche (z. B. `chest`, `back`) als Liste. |
+
+```
+curl "http://localhost:8080/api/v1/exercisedb/exercises?name=bench&muscles=pectorals,triceps&limit=5" \
+  -H "Authorization: Bearer <token>"
+
+curl http://localhost:8080/api/v1/exercisedb/exercises/EIeI8Vf -H "Authorization: Bearer <token>"
+```
+
+### Filter
+
+- `name`: Teil des Namens, Groß- und Kleinschreibung egal.
+- `muscles`: kommagetrennt, z. B. `pectorals,triceps`. Eine Übung passt, wenn **mindestens einer**
+  der Muskeln primär oder sekundär vorkommt.
+- `name` und `muscles` gelten zusammen: beides muss passen.
+- `total` ist die Trefferzahl ohne Paging. Ein `offset` hinter dem Ende liefert eine leere Liste.
+
+### Wie die Daten geladen werden
+
+Die kostenlose ExerciseDB hat ein Rate-Limit (bei Tests kam nach etwa 20 Anfragen pro Minute ein `429`)
+und liefert höchstens 25 Übungen pro Seite. `offset` und ein Muskelfilter mit mehreren Muskeln
+funktionieren dort nicht. Deshalb ruft das Backend nicht bei jeder Anfrage ExerciseDB auf:
+
+1. Beim Start lädt der `ExerciseCatalog` in einem Hintergrund-Thread alle Übungen
+   (ca. 1500, Seite für Seite per `after=<nextCursor>`) und hält sie **im Speicher**.
+   Das dauert etwa 2 Minuten, die Anwendung ist währenddessen schon erreichbar.
+2. Suche, Filter und Paging macht das Backend selbst.
+3. Klappt eine Seite nicht (z. B. `429`), wird sie nach einer Pause wiederholt. Schlägt auch das
+   fehl, startet das Laden später von vorn, bis es klappt. Eine schon geladene Liste wird erst ersetzt,
+   wenn die neue komplett ist.
+4. Solange der Katalog leer ist, antworten alle `/exercisedb`-Endpunkte mit `502 "ExerciseDB not reachable."`.
+5. Beim Hinzufügen einer Übung zu einem Plan wird zuerst im Katalog nachgeschlagen und nur sonst ExerciseDB gefragt.
+
+Was in der Datenbank liegt: nur Benutzer, Pläne und die Übungen in Plänen (mit `externalId`, Name,
+`gifUrl` und Muskelgruppen). Der Katalog liegt nur im Speicher und ist nach einem Neustart weg.
+
+Feldmapping: `exerciseId` wird zu `externalId`, `targetMuscles` zu `primaryMuscleGroups`,
+`secondaryMuscles` zu `secondaryMuscleGroups`.
+
+Einstellbar in `application.properties` (die Werte unten sind die Standardwerte):
+
+```
+app.exercisedb.base-url=https://oss.exercisedb.dev/api/v1
+# Pause zwischen zwei Seiten in Millisekunden
+app.exercisedb.page-pause-ms=2000
+# Wartezeit nach einem Fehler in Millisekunden
+app.exercisedb.retry-wait-ms=60000
+```
