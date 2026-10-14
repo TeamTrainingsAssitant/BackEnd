@@ -117,6 +117,58 @@ public class ExerciseCatalog {
         return exercisesById.get(externalId);
     }
 
+    /**
+     * Sucht im Katalog. {@code name} ist ein Teil des Namens (null oder leer: kein Filter),
+     * {@code muscles}: die Übung muss mindestens einen davon primär oder sekundär trainieren
+     * (null oder leer: kein Filter). Danach wird die Seite ab {@code offset} mit {@code limit}
+     * Einträgen ausgeschnitten, {@code total} ist die Trefferzahl vor dem Ausschneiden.
+     */
+    public SearchResult search(String name, List<String> muscles, int offset, int limit) {
+        List<ExternalExercise> hits = new ArrayList<>();
+        for (ExternalExercise exercise : exercises) {
+            if (matchesName(exercise, name) && matchesMuscles(exercise, muscles)) {
+                hits.add(exercise);
+            }
+        }
+
+        int from = Math.min(Math.max(offset, 0), hits.size());
+        int to = Math.min(from + Math.max(limit, 0), hits.size());
+        return new SearchResult(hits.size(), hits.subList(from, to));
+    }
+
+    private boolean matchesName(ExternalExercise exercise, String name) {
+        if (name == null || name.isBlank()) {
+            return true;
+        }
+        return exercise.name().toLowerCase().contains(name.trim().toLowerCase());
+    }
+
+    private boolean matchesMuscles(ExternalExercise exercise, List<String> wanted) {
+        if (wanted == null || wanted.isEmpty()) {
+            return true;
+        }
+        for (String muscle : wanted) {
+            if (containsIgnoreCase(exercise.primaryMuscleGroups(), muscle)
+                    || containsIgnoreCase(exercise.secondaryMuscleGroups(), muscle)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean containsIgnoreCase(List<String> list, String value) {
+        for (String entry : list) {
+            if (entry.equalsIgnoreCase(value.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Eine Seite Suchergebnisse mit der Gesamtzahl der Treffer. */
+    public record SearchResult(int total, List<ExternalExercise> exercises) {
+    }
+
     public List<String> getMuscles() {
         return muscles;
     }

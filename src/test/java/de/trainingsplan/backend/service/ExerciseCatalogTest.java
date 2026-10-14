@@ -77,6 +77,61 @@ class ExerciseCatalogTest {
         assertEquals(1, catalog.getAll().size());
     }
 
+    private void loadBenchAndSquat() {
+        ExternalExercise bench = new ExternalExercise("1", "Barbell Bench Press", "gif",
+                List.of("pectorals"), List.of("triceps", "deltoids"), List.of("chest"), List.of(), List.of());
+        ExternalExercise squat = new ExternalExercise("2", "Squat", "gif",
+                List.of("quadriceps"), List.of("glutes"), List.of("upper legs"), List.of(), List.of());
+        ExternalExercise dip = new ExternalExercise("3", "Bench Dip", "gif",
+                List.of("triceps"), List.of(), List.of("upper arms"), List.of(), List.of());
+        when(client.listExercises(null)).thenReturn(new ExercisePage(List.of(bench, squat, dip), null));
+        when(client.getMuscles()).thenReturn(List.of());
+        when(client.getBodyParts()).thenReturn(List.of());
+        catalog.load();
+    }
+
+    @Test
+    void searchFiltersByNameIgnoringCase() {
+        loadBenchAndSquat();
+
+        ExerciseCatalog.SearchResult result = catalog.search("BENCH", null, 0, 10);
+
+        assertEquals(2, result.total());
+    }
+
+    @Test
+    void searchFiltersByAnyMuscleInPrimaryOrSecondary() {
+        loadBenchAndSquat();
+
+        // triceps: sekundär bei Bench Press, primär bei Bench Dip
+        assertEquals(2, catalog.search(null, List.of("triceps"), 0, 10).total());
+        // mehrere Muskeln: mindestens einer muss passen
+        assertEquals(3, catalog.search(null, List.of("triceps", "quadriceps"), 0, 10).total());
+    }
+
+    @Test
+    void searchCombinesNameAndMuscle() {
+        loadBenchAndSquat();
+
+        ExerciseCatalog.SearchResult result = catalog.search("dip", List.of("triceps"), 0, 10);
+
+        assertEquals(1, result.total());
+        assertEquals("3", result.exercises().get(0).externalId());
+    }
+
+    @Test
+    void searchPagesWithOffsetAndLimit() {
+        loadBenchAndSquat();
+
+        ExerciseCatalog.SearchResult result = catalog.search(null, null, 1, 1);
+
+        assertEquals(3, result.total());
+        assertEquals(1, result.exercises().size());
+        assertEquals("2", result.exercises().get(0).externalId());
+        // Offset hinter dem Ende: leere Liste, kein Fehler
+        assertTrue(catalog.search(null, null, 10, 5).exercises().isEmpty());
+    }
+
     @Test
     void isNotLoadedBeforeFirstLoad() {
         assertFalse(catalog.isLoaded());
