@@ -167,13 +167,14 @@ public class ExerciseCatalog {
         if (wanted == null || wanted.isEmpty()) {
             return true;
         }
-        for (String muscle : wanted) {
-            if (containsIgnoreCase(exercise.primaryMuscleGroups(), muscle)
-                    || containsIgnoreCase(exercise.secondaryMuscleGroups(), muscle)) {
-                return true;
-            }
-        }
+for (String muscle : wanted) {
+    boolean found = containsIgnoreCase(exercise.primaryMuscleGroups(), muscle)
+            || containsIgnoreCase(exercise.secondaryMuscleGroups(), muscle);
+    if (!found) {
         return false;
+    }
+}
+return true;
     }
 
     private boolean containsIgnoreCase(List<String> list, String value) {
