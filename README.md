@@ -48,8 +48,8 @@ So wird getestet:
 | DELETE | `/users/me` | Token nötig | Konto löschen. Das Passwort steht im Body (`{"password":"..."}`). Löscht auch alle Pläne und Tokens. Bei falschem Passwort `400`. |
 | GET | `/exercises?name=push&limit=20` | Token nötig | Durchsucht ExerciseDB über das Backend und liefert Übungsname, GIF sowie Muskelgruppen. |
 | GET | `/plans/{planId}/exercises` | Token nötig | Liefert die Übungen eines eigenen Plans in Positionsreihenfolge. |
-| POST | `/plans/{planId}/exercises` | Token nötig | Fügt eine ExerciseDB-Übung hinzu (`externalId`, optional `note`). |
-| PUT | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Ändert die Notiz einer Planübung. |
+| POST | `/plans/{planId}/exercises` | Token nötig | Fügt eine ExerciseDB-Übung hinzu (`externalId`, optional `note`, `weight` in kg von 0 bis 1000, `sets` von 1 bis 20, `reps` von 1 bis 100). Werte außerhalb der Grenzen: `400`. |
+| PUT | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Ersetzt `note`, `weight`, `sets` und `reps` einer Planübung (gleiche Grenzen wie oben). Ein fehlendes Feld oder `null` entfernt den Wert. |
 | DELETE | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Entfernt eine Übung aus einem Plan. |
 
 **Alle anderen Endpunkte verlangen den Header `Authorization: Bearer <token>`.**
