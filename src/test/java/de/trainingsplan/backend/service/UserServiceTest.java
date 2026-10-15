@@ -3,28 +3,36 @@ package de.trainingsplan.backend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import de.trainingsplan.backend.controller.dto.PlanExportResponse;
 import de.trainingsplan.backend.controller.dto.RegisterRequest;
+import de.trainingsplan.backend.controller.dto.UserExportResponse;
 import de.trainingsplan.backend.exception.ApiException;
+import de.trainingsplan.backend.model.Plan;
+import de.trainingsplan.backend.model.PlanExercise;
 import de.trainingsplan.backend.model.User;
 import de.trainingsplan.backend.repository.AuthTokenRepository;
 import de.trainingsplan.backend.repository.PlanExerciseRepository;
 import de.trainingsplan.backend.repository.PlanRepository;
 import de.trainingsplan.backend.repository.UserRepository;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class UserServiceTest {
 
@@ -196,5 +204,139 @@ class UserServiceTest {
                 .isInstanceOfSatisfying(ApiException.class,
                         e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT));
         verifyNoInteractions(encoder);
+    }
+
+    private User userWithPassword(long id, String password) {
+        User user = new User("max", "max@mosbach.de", passwordEncoder.encode(password));
+        ReflectionTestUtils.setField(user, "id", id);
+        return user;
+    }
+
+    private Plan planWithId(User user, long id, String name) {
+        Plan plan = new Plan(user, name, null);
+        ReflectionTestUtils.setField(plan, "id", id);
+        return plan;
+    }
+
+    private PlanExercise exercise(Plan plan, String externalId, int position) {
+        return new PlanExercise(plan, externalId, "Name " + externalId, null, List.of("pectorals"), List.of(),
+                position, null);
+    }
+
+    private void assertPasswordWrong(User user, String password) {
+        assertThatThrownBy(() -> userService.deleteAccount(user, password))
+                .isInstanceOfSatisfying(ApiException.class, e -> {
+                    assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(e.getMessage()).isEqualTo("Password wrong.");
+                });
+        verifyNoInteractions(planRepository, authTokenRepository);
+        verify(userRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteAccountRemovesTokensPlansAndUserInThisOrder() {
+        User user = userWithPassword(7L, "super-safe");
+        List<Plan> plans = List.of(planWithId(user, 1L, "Push"), planWithId(user, 2L, "Pull"));
+        when(planRepository.findByUserIdOrderByUpdatedAtDesc(7L)).thenReturn(plans);
+
+        userService.deleteAccount(user, "super-safe");
+
+        // Reihenfolge wegen der Fremdschlüssel: erst Tokens und Pläne, zuletzt der Benutzer
+        InOrder order = inOrder(authTokenRepository, planRepository, userRepository);
+        order.verify(authTokenRepository).deleteByUserId(7L);
+        order.verify(planRepository).deleteAll(plans);
+        order.verify(planRepository).flush();
+        order.verify(userRepository).delete(user);
+    }
+
+    @Test
+    void deleteAccountWithWrongPasswordIsBadRequestAndDeletesNothing() {
+        assertPasswordWrong(userWithPassword(7L, "super-safe"), "other-password");
+    }
+
+    @Test
+    void deleteAccountWithMissingPasswordIsBadRequestAndDeletesNothing() {
+        assertPasswordWrong(userWithPassword(7L, "super-safe"), null);
+    }
+
+    @Test
+    void deleteAccountWithoutPlansStillDeletesUser() {
+        User user = userWithPassword(7L, "super-safe");
+        when(planRepository.findByUserIdOrderByUpdatedAtDesc(7L)).thenReturn(List.of());
+
+        userService.deleteAccount(user, "super-safe");
+
+        verify(planRepository).deleteAll(List.of());
+        verify(userRepository).delete(user);
+    }
+
+    @Test
+    void deleteAccountOnlyLooksUpPlansAndTokensOfThatUser() {
+        User user = userWithPassword(7L, "super-safe");
+
+        userService.deleteAccount(user, "super-safe");
+
+        verify(planRepository).findByUserIdOrderByUpdatedAtDesc(7L);
+        verify(authTokenRepository).deleteByUserId(7L);
+    }
+
+    @Test
+    void exportReturnsUserAndPlansWithTheirExercises() {
+        User user = userWithPassword(7L, "super-safe");
+        Plan push = planWithId(user, 1L, "Push");
+        Plan pull = planWithId(user, 2L, "Pull");
+        when(planRepository.findByUserIdOrderByUpdatedAtDesc(7L)).thenReturn(List.of(push, pull));
+        when(planExerciseRepository.findByPlanIdOrderByPositionAsc(1L))
+                .thenReturn(List.of(exercise(push, "ex1", 0), exercise(push, "ex2", 1)));
+        when(planExerciseRepository.findByPlanIdOrderByPositionAsc(2L))
+                .thenReturn(List.of(exercise(pull, "ex3", 0)));
+
+        UserExportResponse export = userService.export(user);
+
+        assertThat(export.user().userId()).isEqualTo(7L);
+        assertThat(export.user().username()).isEqualTo("max");
+        assertThat(export.user().email()).isEqualTo("max@mosbach.de");
+        assertThat(export.plans()).hasSize(2);
+        assertThat(export.plans().get(0).exercises()).extracting(e -> e.externalId())
+                .containsExactly("ex1", "ex2");
+        assertThat(export.plans().get(1).exercises()).extracting(e -> e.externalId())
+                .containsExactly("ex3");
+    }
+
+    @Test
+    void exportKeepsPlanOrderFromRepository() {
+        User user = userWithPassword(7L, "super-safe");
+        when(planRepository.findByUserIdOrderByUpdatedAtDesc(7L))
+                .thenReturn(List.of(planWithId(user, 2L, "Pull"), planWithId(user, 1L, "Push")));
+        when(planExerciseRepository.findByPlanIdOrderByPositionAsc(any())).thenReturn(List.of());
+
+        UserExportResponse export = userService.export(user);
+
+        assertThat(export.plans()).extracting(PlanExportResponse::name).containsExactly("Pull", "Push");
+    }
+
+    @Test
+    void exportWithoutPlansHasEmptyPlanList() {
+        User user = userWithPassword(7L, "super-safe");
+        when(planRepository.findByUserIdOrderByUpdatedAtDesc(7L)).thenReturn(List.of());
+
+        UserExportResponse export = userService.export(user);
+
+        assertThat(export.user().userId()).isEqualTo(7L);
+        assertThat(export.plans()).isNotNull().isEmpty();
+        verifyNoInteractions(planExerciseRepository);
+    }
+
+    @Test
+    void exportAsksExercisesPerPlanId() {
+        User user = userWithPassword(7L, "super-safe");
+        when(planRepository.findByUserIdOrderByUpdatedAtDesc(7L))
+                .thenReturn(List.of(planWithId(user, 1L, "Push"), planWithId(user, 2L, "Pull")));
+        when(planExerciseRepository.findByPlanIdOrderByPositionAsc(any())).thenReturn(List.of());
+
+        userService.export(user);
+
+        verify(planExerciseRepository).findByPlanIdOrderByPositionAsc(1L);
+        verify(planExerciseRepository).findByPlanIdOrderByPositionAsc(2L);
     }
 }
