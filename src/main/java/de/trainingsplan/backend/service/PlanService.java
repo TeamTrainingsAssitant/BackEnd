@@ -77,6 +77,7 @@ public class PlanService {
         int position = planExerciseRepository.countByPlanId(planId) + 1;
         PlanExercise exercise = new PlanExercise(plan, external.externalId(), external.name(), external.gifUrl(),
                 external.primaryMuscleGroups(), external.secondaryMuscleGroups(), position, request.note());
+        exercise.updateTraining(request.weight(), request.sets(), request.reps());
         plan.touch();
         return planExerciseRepository.save(exercise);
     }
@@ -90,7 +91,7 @@ public class PlanService {
         return exerciseDbClient.getExercise(externalId);
     }
 
-    /** Ändert die Note einer Übung im Plan, null entfernt sie. */
+    /** Ersetzt Note, Gewicht, Sätze und Wiederholungen einer Übung im Plan, null entfernt den Wert. */
     @Transactional
     public PlanExercise updateExercise(User user, Long planId, Long planExerciseId,
             PlanExerciseUpdateRequest request) {
@@ -98,6 +99,7 @@ public class PlanService {
         PlanExercise exercise = planExerciseRepository.findByIdAndPlanId(planExerciseId, planId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exercise not found."));
         exercise.updateNote(request.note());
+        exercise.updateTraining(request.weight(), request.sets(), request.reps());
         plan.touch();
         return exercise;
     }
