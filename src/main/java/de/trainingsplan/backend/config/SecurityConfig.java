@@ -63,6 +63,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
                 "https://trainingsplan-frontend-be8f5157e428.herokuapp.com",
+                "https://capsulegym-aa0bafe3a982.herokuapp.com",
                 "http://localhost:8000"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
