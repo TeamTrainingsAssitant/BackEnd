@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -44,6 +45,28 @@ public class ExerciseDbClient {
         }
     }
 
+    /** Sucht Übungen für die Trainingsbibliothek des Frontends. */
+    public List<ExternalExercise> searchExercises(String name, int limit) {
+        try {
+            ListResponse response = restClient.get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/exercises").queryParam("limit", limit);
+                        if (StringUtils.hasText(name)) {
+                            uriBuilder.queryParam("name", name.trim());
+                        }
+                        return uriBuilder.build();
+                    })
+                    .retrieve()
+                    .body(ListResponse.class);
+            if (response == null || response.data() == null) {
+                throw notReachable();
+            }
+            return response.data().stream().map(Data::toExternalExercise).toList();
+        } catch (RestClientException e) {
+            throw notReachable();
+        }
+    }
+
     /**
      * Holt eine Seite der Übungsliste (25 Stück). Die erste Seite wird mit {@code afterCursor = null}
      * geholt, die nächste mit dem {@code nextCursor} der vorherigen Seite.
@@ -51,8 +74,8 @@ public class ExerciseDbClient {
     public ExercisePage listExercises(String afterCursor) {
         try {
             String path = "/exercises?limit=" + PAGE_SIZE;
-            if (afterCursor != null) {
-                path = path + "&after=" + afterCursor;
+            if (StringUtils.hasText(afterCursor)) {
+                path += "&after=" + afterCursor;
             }
             ListResponse response = restClient.get().uri(path).retrieve().body(ListResponse.class);
             if (response == null || response.data() == null) {

@@ -46,6 +46,7 @@ So wird getestet:
 | GET | `/users/me` | Token nötig | Profil des angemeldeten Benutzers. |
 | GET | `/users/me/export` | Token nötig | Alle persönlichen Daten als `{"user":{...},"plans":[...]}`, Pläne mit Übungen in Reihenfolge. |
 | DELETE | `/users/me` | Token nötig | Konto löschen. Das Passwort steht im Body (`{"password":"..."}`). Löscht auch alle Pläne und Tokens. Bei falschem Passwort `400`. |
+| GET | `/exercises?name=push&limit=20` | Token nötig | Durchsucht ExerciseDB über das Backend und liefert Übungsname, GIF sowie Muskelgruppen. |
 
 **Alle anderen Endpunkte verlangen den Header `Authorization: Bearer <token>`.**
 Ohne gültiges Token antwortet das Backend mit `401 {"message":"Not authenticated."}`.
