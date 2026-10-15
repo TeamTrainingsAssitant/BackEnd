@@ -82,7 +82,7 @@ class PlanServiceTest {
                 List.of("erector spinae"), List.of("deltoids"), List.of("back"), List.of(), List.of()));
         when(planExerciseRepository.countByPlanId(PLAN_ID)).thenReturn(0);
 
-        PlanExercise result = planService.addExercise(user, PLAN_ID, new PlanExerciseRequest("01qpYSe", null));
+        PlanExercise result = planService.addExercise(user, PLAN_ID, new PlanExerciseRequest("01qpYSe", null, null, null, null));
 
         assertThat(result.getName()).isEqualTo("upward facing dog");
         assertThat(result.getPrimaryMuscleGroups()).containsExactly("erector spinae");
@@ -97,7 +97,7 @@ class PlanServiceTest {
                 List.of("back"), List.of("bodyweight"), List.of()));
         when(planExerciseRepository.countByPlanId(PLAN_ID)).thenReturn(2);
 
-        planService.addExercise(user, PLAN_ID, new PlanExerciseRequest(" 01qpYSe ", "Sitz 4"));
+        planService.addExercise(user, PLAN_ID, new PlanExerciseRequest(" 01qpYSe ", "Sitz 4", null, null, null));
 
         ArgumentCaptor<PlanExercise> saved = ArgumentCaptor.forClass(PlanExercise.class);
         verify(planExerciseRepository).save(saved.capture());
@@ -114,7 +114,7 @@ class PlanServiceTest {
     void addExerciseToForeignPlanIsNotFound() {
         when(planRepository.findByIdAndUserId(99L, USER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> planService.addExercise(user, 99L, new PlanExerciseRequest("01qpYSe", null)))
+        assertThatThrownBy(() -> planService.addExercise(user, 99L, new PlanExerciseRequest("01qpYSe", null, null, null, null)))
                 .isInstanceOfSatisfying(ApiException.class, e -> {
                     assertThat(e.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
                     assertThat(e.getMessage()).isEqualTo("Plan not found.");
@@ -129,10 +129,10 @@ class PlanServiceTest {
                 List.of(), List.of(), 1, "alte Note");
         when(planExerciseRepository.findByIdAndPlanId(7L, PLAN_ID)).thenReturn(Optional.of(exercise));
 
-        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest("Sitz 4"));
+        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest("Sitz 4", null, null, null));
         assertThat(exercise.getNote()).isEqualTo("Sitz 4");
 
-        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest(null));
+        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest(null, null, null, null));
         assertThat(exercise.getNote()).isNull();
     }
 
