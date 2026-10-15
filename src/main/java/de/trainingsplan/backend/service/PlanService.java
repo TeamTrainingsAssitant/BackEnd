@@ -46,6 +46,17 @@ public class PlanService {
         return findOwnPlan(user, planId);
     }
 
+    @Transactional(readOnly = true)
+    public List<PlanExercise> listExercises(User user, Long planId) {
+        findOwnPlan(user, planId);
+        return planExerciseRepository.findByPlanIdOrderByPositionAsc(planId);
+    }
+
+    @Transactional(readOnly = true)
+    public int exerciseCount(Long planId) {
+        return planExerciseRepository.countByPlanId(planId);
+    }
+
     @Transactional
     public Plan update(User user, Long planId, PlanRequest request) {
         Plan plan = findOwnPlan(user, planId);

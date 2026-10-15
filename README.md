@@ -47,6 +47,10 @@ So wird getestet:
 | GET | `/users/me/export` | Token nötig | Alle persönlichen Daten als `{"user":{...},"plans":[...]}`, Pläne mit Übungen in Reihenfolge. |
 | DELETE | `/users/me` | Token nötig | Konto löschen. Das Passwort steht im Body (`{"password":"..."}`). Löscht auch alle Pläne und Tokens. Bei falschem Passwort `400`. |
 | GET | `/exercises?name=push&limit=20` | Token nötig | Durchsucht ExerciseDB über das Backend und liefert Übungsname, GIF sowie Muskelgruppen. |
+| GET | `/plans/{planId}/exercises` | Token nötig | Liefert die Übungen eines eigenen Plans in Positionsreihenfolge. |
+| POST | `/plans/{planId}/exercises` | Token nötig | Fügt eine ExerciseDB-Übung hinzu (`externalId`, optional `note`). |
+| PUT | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Ändert die Notiz einer Planübung. |
+| DELETE | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Entfernt eine Übung aus einem Plan. |
 
 **Alle anderen Endpunkte verlangen den Header `Authorization: Bearer <token>`.**
 Ohne gültiges Token antwortet das Backend mit `401 {"message":"Not authenticated."}`.

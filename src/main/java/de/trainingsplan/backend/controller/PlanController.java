@@ -35,9 +35,8 @@ public class PlanController {
 
     @GetMapping
     public List<PlanListItemResponse> list(@AuthenticationPrincipal User user) {
-        // exerciseCount ist 0, bis es Übungen in Plänen gibt
         return planService.list(user).stream()
-                .map(plan -> PlanListItemResponse.from(plan, 0))
+                .map(plan -> PlanListItemResponse.from(plan, planService.exerciseCount(plan.getId())))
                 .toList();
     }
 
@@ -51,6 +50,14 @@ public class PlanController {
     @GetMapping("/{planId}")
     public PlanResponse get(@AuthenticationPrincipal User user, @PathVariable Long planId) {
         return PlanResponse.from(planService.get(user, planId));
+    }
+
+    @GetMapping("/{planId}/exercises")
+    public List<PlanExerciseResponse> listExercises(@AuthenticationPrincipal User user,
+            @PathVariable Long planId) {
+        return planService.listExercises(user, planId).stream()
+                .map(PlanExerciseResponse::from)
+                .toList();
     }
 
     @PutMapping("/{planId}")
