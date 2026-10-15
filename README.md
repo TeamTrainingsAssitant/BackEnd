@@ -127,8 +127,8 @@ curl http://localhost:8080/api/v1/exercisedb/exercises/EIeI8Vf -H "Authorization
 ### Filter
 
 - `name`: Teil des Namens, Groß- und Kleinschreibung egal.
-- `muscles`: kommagetrennt, z. B. `pectorals,triceps`. Eine Übung passt, wenn **mindestens einer**
-  der Muskeln primär oder sekundär vorkommt.
+- `muscles`: kommagetrennt, z. B. `pectorals,triceps`. Eine Übung passt, wenn **alle**
+  genannten Muskeln primär oder sekundär vorkommen.
 - `name` und `muscles` gelten zusammen: beides muss passen.
 - `total` ist die Trefferzahl ohne Paging. Ein `offset` hinter dem Ende liefert eine leere Liste.
 
