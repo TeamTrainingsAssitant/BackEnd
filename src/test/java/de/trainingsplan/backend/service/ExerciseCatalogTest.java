@@ -103,13 +103,17 @@ class ExerciseCatalogTest {
     }
 
     @Test
-    void searchFiltersByAnyMuscleInPrimaryOrSecondary() {
+    void searchFiltersByMusclesInPrimaryOrSecondary() {
         loadBenchAndSquat();
 
         // triceps: sekundär bei Bench Press, primär bei Bench Dip
         assertEquals(2, catalog.search(null, List.of("triceps"), 0, 10).total());
-        // mehrere Muskeln: mindestens einer muss passen
-        assertEquals(3, catalog.search(null, List.of("triceps", "quadriceps"), 0, 10).total());
+        // mehrere Muskeln: alle müssen passen, primär oder sekundär (Bench Press: pectorals primär, triceps sekundär)
+        ExerciseCatalog.SearchResult both = catalog.search(null, List.of("triceps", "pectorals"), 0, 10);
+        assertEquals(1, both.total());
+        assertEquals("1", both.exercises().get(0).externalId());
+        // kein Treffer, wenn nur einer der Muskeln vorkommt
+        assertEquals(0, catalog.search(null, List.of("triceps", "quadriceps"), 0, 10).total());
     }
 
     @Test
