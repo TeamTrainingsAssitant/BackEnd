@@ -50,6 +50,13 @@ public class PlanExercise {
     @Column(length = 500)
     private String note;
 
+    /** Gewicht in kg, optional. */
+    private Double weight;
+
+    private Integer sets;
+
+    private Integer reps;
+
     protected PlanExercise() {
     }
 
@@ -69,6 +76,13 @@ public class PlanExercise {
     /** Ändert die Note, null entfernt sie. */
     public void updateNote(String note) {
         this.note = note;
+    }
+
+    /** Ersetzt Gewicht, Sätze und Wiederholungen, null entfernt den jeweiligen Wert. */
+    public void updateTraining(Double weight, Integer sets, Integer reps) {
+        this.weight = weight;
+        this.sets = sets;
+        this.reps = reps;
     }
 
     /** Rückt eine Position nach vorne, wenn davor eine Übung entfernt wurde. */
@@ -110,5 +124,17 @@ public class PlanExercise {
 
     public String getNote() {
         return note;
+    }
+
+    public Double getWeight() {
+        return weight;
+    }
+
+    public Integer getSets() {
+        return sets;
+    }
+
+    public Integer getReps() {
+        return reps;
     }
 }
