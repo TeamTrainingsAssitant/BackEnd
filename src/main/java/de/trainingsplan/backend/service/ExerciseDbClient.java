@@ -3,6 +3,7 @@ package de.trainingsplan.backend.service;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import de.trainingsplan.backend.exception.ApiException;
 import java.util.List;
+import org.springframework.util.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,10 +24,10 @@ public class ExerciseDbClient {
     /** Holt eine Übung. Unbekannte ID: 404, ExerciseDB nicht erreichbar: 502. */
     public ExternalExercise getExercise(String externalId) {
         try {
-            Response response = restClient.get()
+            SingleResponse response = restClient.get()
                     .uri("/exercises/{id}", externalId)
                     .retrieve()
-                    .body(Response.class);
+                    .body(SingleResponse.class);
             if (response == null || response.data() == null) {
                 throw new ApiException(HttpStatus.BAD_GATEWAY, "ExerciseDB not reachable.");
             }
@@ -41,13 +42,41 @@ public class ExerciseDbClient {
         }
     }
 
+    /** Sucht Übungen für die Trainingsbibliothek des Frontends. */
+    public List<ExternalExercise> searchExercises(String name, int limit) {
+        try {
+            ListResponse response = restClient.get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/exercises").queryParam("limit", limit);
+                        if (StringUtils.hasText(name)) {
+                            uriBuilder.queryParam("name", name.trim());
+                        }
+                        return uriBuilder.build();
+                    })
+                    .retrieve()
+                    .body(ListResponse.class);
+            if (response == null || response.data() == null) {
+                throw new ApiException(HttpStatus.BAD_GATEWAY, "ExerciseDB not reachable.");
+            }
+            return response.data().stream().map(Data::toExternalExercise).toList();
+        } catch (RestClientResponseException e) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "ExerciseDB not reachable.");
+        } catch (RestClientException e) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "ExerciseDB not reachable.");
+        }
+    }
+
     /** Übung in unseren Feldnamen (targetMuscles wird zu primaryMuscleGroups usw.). */
     public record ExternalExercise(String externalId, String name, String gifUrl,
             List<String> primaryMuscleGroups, List<String> secondaryMuscleGroups) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record Response(Data data) {
+    private record SingleResponse(Data data) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record ListResponse(List<Data> data) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
