@@ -21,12 +21,14 @@ public class PlanService {
 
     private final PlanExerciseRepository planExerciseRepository;
     private final ExerciseDbClient exerciseDbClient;
+    private final ExerciseCatalog exerciseCatalog;
 
     public PlanService(PlanRepository planRepository, PlanExerciseRepository planExerciseRepository,
-            ExerciseDbClient exerciseDbClient) {
+            ExerciseDbClient exerciseDbClient, ExerciseCatalog exerciseCatalog) {
         this.planRepository = planRepository;
         this.planExerciseRepository = planExerciseRepository;
         this.exerciseDbClient = exerciseDbClient;
+        this.exerciseCatalog = exerciseCatalog;
     }
 
     @Transactional(readOnly = true)
@@ -60,12 +62,21 @@ public class PlanService {
     @Transactional
     public PlanExercise addExercise(User user, Long planId, PlanExerciseRequest request) {
         Plan plan = findOwnPlan(user, planId);
-        ExerciseDbClient.ExternalExercise external = exerciseDbClient.getExercise(request.externalId().trim());
+        ExerciseDbClient.ExternalExercise external = findExternalExercise(request.externalId().trim());
         int position = planExerciseRepository.countByPlanId(planId) + 1;
         PlanExercise exercise = new PlanExercise(plan, external.externalId(), external.name(), external.gifUrl(),
                 external.primaryMuscleGroups(), external.secondaryMuscleGroups(), position, request.note());
         plan.touch();
         return planExerciseRepository.save(exercise);
+    }
+
+    /** Schaut zuerst im Katalog nach und fragt ExerciseDB nur, wenn die Übung dort nicht liegt. */
+    private ExerciseDbClient.ExternalExercise findExternalExercise(String externalId) {
+        ExerciseDbClient.ExternalExercise cached = exerciseCatalog.findById(externalId);
+        if (cached != null) {
+            return cached;
+        }
+        return exerciseDbClient.getExercise(externalId);
     }
 
     /** Ändert die Note einer Übung im Plan, null entfernt sie. */

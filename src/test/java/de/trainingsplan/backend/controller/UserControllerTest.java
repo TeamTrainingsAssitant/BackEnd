@@ -2,15 +2,21 @@ package de.trainingsplan.backend.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import de.trainingsplan.backend.controller.dto.DeleteUserRequest;
+import de.trainingsplan.backend.controller.dto.MessageResponse;
 import de.trainingsplan.backend.controller.dto.RegisterRequest;
 import de.trainingsplan.backend.controller.dto.RegisterResponse;
+import de.trainingsplan.backend.controller.dto.UserExportResponse;
 import de.trainingsplan.backend.controller.dto.UserResponse;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.User;
 import de.trainingsplan.backend.service.UserService;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -65,5 +71,37 @@ class UserControllerTest {
         assertThat(response.userId()).isEqualTo(7L);
         assertThat(response.username()).isEqualTo("max");
         assertThat(response.email()).isEqualTo("max@mosbach.de");
+    }
+
+    @Test
+    void deleteReturnsMessageAndPassesPasswordToService() {
+        User user = userWithId(7L);
+
+        MessageResponse response = controller.delete(user, new DeleteUserRequest("super-safe"));
+
+        assertThat(response.message()).isEqualTo("Account deleted.");
+        verify(userService).deleteAccount(user, "super-safe");
+    }
+
+    @Test
+    void deletePassesServiceErrorThrough() {
+        User user = userWithId(7L);
+        doThrow(new ApiException(HttpStatus.BAD_REQUEST, "Password wrong."))
+                .when(userService).deleteAccount(user, "wrong");
+
+        assertThatThrownBy(() -> controller.delete(user, new DeleteUserRequest("wrong")))
+                .isInstanceOfSatisfying(ApiException.class, e -> {
+                    assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(e.getMessage()).isEqualTo("Password wrong.");
+                });
+    }
+
+    @Test
+    void exportReturnsWhatTheServiceDelivers() {
+        User user = userWithId(7L);
+        UserExportResponse export = new UserExportResponse(UserResponse.from(user), List.of());
+        when(userService.export(user)).thenReturn(export);
+
+        assertThat(controller.export(user)).isSameAs(export);
     }
 }
