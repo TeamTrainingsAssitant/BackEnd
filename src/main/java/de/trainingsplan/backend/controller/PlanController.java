@@ -1,7 +1,9 @@
 package de.trainingsplan.backend.controller;
 
 import de.trainingsplan.backend.controller.dto.MessageResponse;
+import de.trainingsplan.backend.controller.dto.ExerciseListItemResponse;
 import de.trainingsplan.backend.controller.dto.PlanExerciseRequest;
+import de.trainingsplan.backend.controller.dto.PlanExerciseReplacementRequest;
 import de.trainingsplan.backend.controller.dto.PlanExerciseResponse;
 import de.trainingsplan.backend.controller.dto.PlanExerciseUpdateRequest;
 import de.trainingsplan.backend.controller.dto.PlanListItemResponse;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -83,6 +86,23 @@ public class PlanController {
     public PlanExerciseResponse updateExercise(@AuthenticationPrincipal User user, @PathVariable Long planId,
             @PathVariable Long planExerciseId, @Valid @RequestBody PlanExerciseUpdateRequest request) {
         return PlanExerciseResponse.from(planService.updateExercise(user, planId, planExerciseId, request));
+    }
+
+    @GetMapping("/{planId}/exercises/{planExerciseId}/alternatives")
+    public List<ExerciseListItemResponse> alternatives(@AuthenticationPrincipal User user,
+            @PathVariable Long planId, @PathVariable Long planExerciseId,
+            @RequestParam(defaultValue = "5") int limit) {
+        return planService.alternatives(user, planId, planExerciseId, limit).stream()
+                .map(ExerciseListItemResponse::from)
+                .toList();
+    }
+
+    @PutMapping("/{planId}/exercises/{planExerciseId}/replacement")
+    public PlanExerciseResponse replaceExercise(@AuthenticationPrincipal User user,
+            @PathVariable Long planId, @PathVariable Long planExerciseId,
+            @Valid @RequestBody PlanExerciseReplacementRequest request) {
+        return PlanExerciseResponse.from(
+                planService.replaceExercise(user, planId, planExerciseId, request.externalId()));
     }
 
     @DeleteMapping("/{planId}/exercises/{planExerciseId}")

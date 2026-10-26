@@ -85,6 +85,16 @@ public class PlanExercise {
         this.reps = reps;
     }
 
+    /** Ersetzt die ExerciseDB-Daten, ohne Position, Notiz oder Trainingswerte anzutasten. */
+    public void replaceExerciseDetails(String externalId, String name, String gifUrl,
+            List<String> primaryMuscleGroups, List<String> secondaryMuscleGroups) {
+        this.externalId = externalId;
+        this.name = name;
+        this.gifUrl = gifUrl;
+        this.primaryMuscleGroups = primaryMuscleGroups;
+        this.secondaryMuscleGroups = secondaryMuscleGroups;
+    }
+
     /** Rückt eine Position nach vorne, wenn davor eine Übung entfernt wurde. */
     public void moveUp() {
         this.position--;

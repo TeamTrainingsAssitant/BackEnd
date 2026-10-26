@@ -9,7 +9,11 @@ import de.trainingsplan.backend.model.PlanExercise;
 import de.trainingsplan.backend.model.User;
 import de.trainingsplan.backend.repository.PlanExerciseRepository;
 import de.trainingsplan.backend.repository.PlanRepository;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -102,6 +106,97 @@ public class PlanService {
         exercise.updateTraining(request.weight(), request.sets(), request.reps());
         plan.touch();
         return exercise;
+    }
+
+    /** Findet passende Katalogübungen, die noch nicht im eigenen Plan stehen. */
+    @Transactional(readOnly = true)
+    public List<ExerciseDbClient.ExternalExercise> alternatives(User user, Long planId,
+            Long planExerciseId, int limit) {
+        findOwnPlan(user, planId);
+        PlanExercise target = planExerciseRepository.findByIdAndPlanId(planExerciseId, planId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exercise not found."));
+        if (!exerciseCatalog.isLoaded()) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "ExerciseDB not reachable.");
+        }
+
+        ExerciseDbClient.ExternalExercise catalogTarget = exerciseCatalog.findById(target.getExternalId());
+        Set<String> occupiedIds = new HashSet<>();
+        planExerciseRepository.findByPlanIdOrderByPositionAsc(planId)
+                .forEach(exercise -> occupiedIds.add(normalize(exercise.getExternalId())));
+
+        return exerciseCatalog.getAll().stream()
+                .filter(candidate -> !occupiedIds.contains(normalize(candidate.externalId())))
+                .map(candidate -> new ScoredExercise(candidate, similarityScore(target, catalogTarget, candidate)))
+                .filter(scored -> scored.score() > 0)
+                .sorted(Comparator.comparingInt(ScoredExercise::score).reversed()
+                        .thenComparing(scored -> scored.exercise().name(), String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(scored -> scored.exercise().externalId()))
+                .limit(Math.max(1, Math.min(limit, 20)))
+                .map(ScoredExercise::exercise)
+                .toList();
+    }
+
+    /** Tauscht die Übungsdaten aus, behält aber Notiz und Trainingswerte der Planübung bei. */
+    @Transactional
+    public PlanExercise replaceExercise(User user, Long planId, Long planExerciseId, String externalId) {
+        Plan plan = findOwnPlan(user, planId);
+        PlanExercise target = planExerciseRepository.findByIdAndPlanId(planExerciseId, planId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exercise not found."));
+        String requestedId = externalId.trim();
+        if (target.getExternalId().equalsIgnoreCase(requestedId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Choose a different exercise.");
+        }
+
+        boolean alreadyInPlan = planExerciseRepository.findByPlanIdOrderByPositionAsc(planId).stream()
+                .anyMatch(exercise -> !exercise.getId().equals(target.getId())
+                        && exercise.getExternalId().equalsIgnoreCase(requestedId));
+        if (alreadyInPlan) {
+            throw new ApiException(HttpStatus.CONFLICT, "Exercise already in plan.");
+        }
+
+        ExerciseDbClient.ExternalExercise replacement = findExternalExercise(requestedId);
+        target.replaceExerciseDetails(replacement.externalId(), replacement.name(), replacement.gifUrl(),
+                replacement.primaryMuscleGroups(), replacement.secondaryMuscleGroups());
+        plan.touch();
+        return target;
+    }
+
+    private int similarityScore(PlanExercise target, ExerciseDbClient.ExternalExercise catalogTarget,
+            ExerciseDbClient.ExternalExercise candidate) {
+        Set<String> primary = normalized(target.getPrimaryMuscleGroups());
+        Set<String> secondary = normalized(target.getSecondaryMuscleGroups());
+        int score = overlapScore(candidate.primaryMuscleGroups(), primary, 4)
+                + overlapScore(candidate.secondaryMuscleGroups(), primary, 3)
+                + overlapScore(candidate.primaryMuscleGroups(), secondary, 2)
+                + overlapScore(candidate.secondaryMuscleGroups(), secondary, 1);
+
+        if (catalogTarget != null && overlaps(catalogTarget.bodyParts(), candidate.bodyParts())) {
+            score++;
+        }
+        return score;
+    }
+
+    private int overlapScore(List<String> candidateGroups, Set<String> targetGroups, int points) {
+        if (candidateGroups == null) return 0;
+        return (int) candidateGroups.stream().map(PlanService::normalize)
+                .filter(targetGroups::contains).distinct().count() * points;
+    }
+
+    private boolean overlaps(List<String> first, List<String> second) {
+        Set<String> normalizedFirst = normalized(first);
+        return second != null && second.stream().map(PlanService::normalize).anyMatch(normalizedFirst::contains);
+    }
+
+    private Set<String> normalized(List<String> values) {
+        if (values == null) return Set.of();
+        return values.stream().map(PlanService::normalize).collect(java.util.stream.Collectors.toSet());
+    }
+
+    private static String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private record ScoredExercise(ExerciseDbClient.ExternalExercise exercise, int score) {
     }
 
     /** Entfernt eine Übung aus dem Plan, die übrigen rücken in der Position nach. */

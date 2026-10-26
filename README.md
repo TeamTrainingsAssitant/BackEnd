@@ -50,6 +50,8 @@ So wird getestet:
 | GET | `/plans/{planId}/exercises` | Token nötig | Liefert die Übungen eines eigenen Plans in Positionsreihenfolge. |
 | POST | `/plans/{planId}/exercises` | Token nötig | Fügt eine ExerciseDB-Übung hinzu (`externalId`, optional `note`, `weight` in kg von 0 bis 1000, `sets` von 1 bis 20, `reps` von 1 bis 100). Werte außerhalb der Grenzen: `400`. |
 | PUT | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Ersetzt `note`, `weight`, `sets` und `reps` einer Planübung (gleiche Grenzen wie oben). Ein fehlendes Feld oder `null` entfernt den Wert. |
+| GET | `/plans/{planId}/exercises/{planExerciseId}/alternatives?limit=5` | Token nötig | Empfiehlt bis zu 20 noch nicht im Plan enthaltene Übungen mit möglichst ähnlichen Muskelgruppen. Standard: 5 Vorschläge. |
+| PUT | `/plans/{planId}/exercises/{planExerciseId}/replacement` | Token nötig | Ersetzt die Übung mit `{"externalId":"..."}` und behält Position, Notiz sowie Sätze, Wiederholungen und Gewicht. |
 | DELETE | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Entfernt eine Übung aus einem Plan. |
 
 **Alle anderen Endpunkte verlangen den Header `Authorization: Bearer <token>`.**
