@@ -137,6 +137,74 @@ class PlanServiceTest {
     }
 
     @Test
+    void addExerciseSavesWeightSetsAndReps() {
+        when(exerciseCatalog.findById("01qpYSe")).thenReturn(new ExerciseDbClient.ExternalExercise(
+                "01qpYSe", "upward facing dog", null, List.of(), List.of(), List.of(), List.of(), List.of()));
+        when(planExerciseRepository.countByPlanId(PLAN_ID)).thenReturn(0);
+
+        planService.addExercise(user, PLAN_ID, new PlanExerciseRequest("01qpYSe", null, 82.5, 4, 8));
+
+        ArgumentCaptor<PlanExercise> saved = ArgumentCaptor.forClass(PlanExercise.class);
+        verify(planExerciseRepository).save(saved.capture());
+        assertThat(saved.getValue().getWeight()).isEqualTo(82.5);
+        assertThat(saved.getValue().getSets()).isEqualTo(4);
+        assertThat(saved.getValue().getReps()).isEqualTo(8);
+    }
+
+    @Test
+    void updateExerciseReplacesAndRemovesWeightSetsAndReps() {
+        PlanExercise exercise = new PlanExercise(plan, "01qpYSe", "upward facing dog", null,
+                List.of(), List.of(), 1, null);
+        when(planExerciseRepository.findByIdAndPlanId(7L, PLAN_ID)).thenReturn(Optional.of(exercise));
+
+        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest(null, 60.0, 3, 10));
+        assertThat(exercise.getWeight()).isEqualTo(60.0);
+        assertThat(exercise.getSets()).isEqualTo(3);
+        assertThat(exercise.getReps()).isEqualTo(10);
+
+        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest(null, null, null, null));
+        assertThat(exercise.getWeight()).isNull();
+        assertThat(exercise.getSets()).isNull();
+        assertThat(exercise.getReps()).isNull();
+    }
+
+    @Test
+    void updateExerciseOverwritesAllThreeValuesAtOnce() {
+        PlanExercise exercise = new PlanExercise(plan, "01qpYSe", "upward facing dog", null,
+                List.of(), List.of(), 1, null);
+        exercise.updateTraining(60.0, 3, 10);
+        when(planExerciseRepository.findByIdAndPlanId(7L, PLAN_ID)).thenReturn(Optional.of(exercise));
+
+        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest(null, 70.0, null, null));
+
+        assertThat(exercise.getWeight()).isEqualTo(70.0);
+        assertThat(exercise.getSets()).isNull();
+        assertThat(exercise.getReps()).isNull();
+    }
+
+    @Test
+    void replaceExerciseKeepsWeightSetsAndReps() {
+        PlanExercise exercise = new PlanExercise(plan, "01qpYSe", "upward facing dog", null,
+                List.of(), List.of(), 3, "Sitz 4");
+        ReflectionTestUtils.setField(exercise, "id", 7L);
+        exercise.updateTraining(60.0, 3, 10);
+        when(planExerciseRepository.findByIdAndPlanId(7L, PLAN_ID)).thenReturn(Optional.of(exercise));
+        when(planExerciseRepository.findByPlanIdOrderByPositionAsc(PLAN_ID)).thenReturn(List.of(exercise));
+        when(exerciseCatalog.findById("dips01")).thenReturn(new ExerciseDbClient.ExternalExercise(
+                "dips01", "dips", null, List.of("triceps"), List.of("pectorals"), List.of(), List.of(), List.of()));
+
+        PlanExercise result = planService.replaceExercise(user, PLAN_ID, 7L, "dips01");
+
+        assertThat(result.getExternalId()).isEqualTo("dips01");
+        assertThat(result.getName()).isEqualTo("dips");
+        assertThat(result.getWeight()).isEqualTo(60.0);
+        assertThat(result.getSets()).isEqualTo(3);
+        assertThat(result.getReps()).isEqualTo(10);
+        assertThat(result.getNote()).isEqualTo("Sitz 4");
+        assertThat(result.getPosition()).isEqualTo(3);
+    }
+
+    @Test
     void deleteExerciseRemovesItAndMovesFollowingExercisesUp() {
         PlanExercise second = new PlanExercise(plan, "a", "Kniebeugen", null, List.of(), List.of(), 2, null);
         PlanExercise third = new PlanExercise(plan, "b", "Rudern", null, List.of(), List.of(), 3, null);
