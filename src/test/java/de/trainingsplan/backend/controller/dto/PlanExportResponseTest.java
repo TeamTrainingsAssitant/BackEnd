@@ -29,6 +29,7 @@ class PlanExportResponseTest {
         Plan plan = plan();
         PlanExercise first = exercise(plan, 1L, "ex1", "Bench Press", 0, "langsam");
         PlanExercise second = exercise(plan, 2L, "ex2", "Dips", 1, null);
+        first.updateTraining(82.5, 4, 8);
 
         PlanExportResponse response = PlanExportResponse.from(plan, List.of(first, second));
 
@@ -48,7 +49,23 @@ class PlanExportResponseTest {
         assertThat(mapped.secondaryMuscleGroups()).containsExactly("triceps");
         assertThat(mapped.position()).isZero();
         assertThat(mapped.note()).isEqualTo("langsam");
+        assertThat(mapped.weight()).isEqualTo(82.5);
+        assertThat(mapped.sets()).isEqualTo(4);
+        assertThat(mapped.reps()).isEqualTo(8);
         assertThat(response.exercises().get(1).note()).isNull();
+    }
+
+    @Test
+    void fromMapsMissingTrainingValuesToNull() {
+        Plan plan = plan();
+
+        PlanExportResponse response = PlanExportResponse.from(plan,
+                List.of(exercise(plan, 1L, "ex1", "Bench Press", 0, null)));
+
+        PlanExerciseResponse mapped = response.exercises().get(0);
+        assertThat(mapped.weight()).isNull();
+        assertThat(mapped.sets()).isNull();
+        assertThat(mapped.reps()).isNull();
     }
 
     @Test
