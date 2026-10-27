@@ -52,6 +52,7 @@ So wird getestet:
 | PUT | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Ersetzt `note`, `weight`, `sets` und `reps` einer Planübung (gleiche Grenzen wie oben). Ein fehlendes Feld oder `null` entfernt den Wert. |
 | GET | `/plans/{planId}/exercises/{planExerciseId}/alternatives?limit=5` | Token nötig | Empfiehlt bis zu 20 noch nicht im Plan enthaltene Übungen mit möglichst ähnlichen Muskelgruppen. Standard: 5 Vorschläge. |
 | PUT | `/plans/{planId}/exercises/{planExerciseId}/replacement` | Token nötig | Ersetzt die Übung mit `{"externalId":"..."}` und behält Position, Notiz sowie Sätze, Wiederholungen und Gewicht. |
+| PUT | `/plans/{planId}/exercises/order` | Token nötig | Ändert die Reihenfolge der Übungen. Der Body enthält alle `planExerciseId`s des Plans in der neuen Reihenfolge (`{"exerciseIds":[3,1,2]}`), die Positionen werden ab 1 neu vergeben. Antwort: die Übungen in neuer Reihenfolge. Doppelte, fehlende oder fremde IDs: `400`, fremder oder unbekannter Plan: `404`. |
 | DELETE | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Entfernt eine Übung aus einem Plan. |
 
 **Alle anderen Endpunkte verlangen den Header `Authorization: Bearer <token>`.**
