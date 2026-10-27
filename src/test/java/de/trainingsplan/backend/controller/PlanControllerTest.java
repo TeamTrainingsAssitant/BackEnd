@@ -7,11 +7,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import de.trainingsplan.backend.controller.dto.MessageResponse;
+import de.trainingsplan.backend.controller.dto.PlanExerciseOrderRequest;
+import de.trainingsplan.backend.controller.dto.PlanExerciseResponse;
 import de.trainingsplan.backend.controller.dto.PlanListItemResponse;
 import de.trainingsplan.backend.controller.dto.PlanRequest;
 import de.trainingsplan.backend.controller.dto.PlanResponse;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.Plan;
+import de.trainingsplan.backend.model.PlanExercise;
 import de.trainingsplan.backend.model.User;
 import de.trainingsplan.backend.service.PlanService;
 import java.util.List;
@@ -101,6 +104,21 @@ class PlanControllerTest {
 
         verify(planService).delete(user, 10L);
         assertThat(response.message()).isEqualTo("Plan deleted.");
+    }
+
+    @Test
+    void reorderExercisesReturnsExercisesInNewOrder() {
+        Plan plan = planWithId(10L, "Push Day");
+        PlanExercise first = new PlanExercise(plan, "a", "Rudern", null, List.of(), List.of(), 1, null);
+        PlanExercise second = new PlanExercise(plan, "b", "Bankdrücken", null, List.of(), List.of(), 2, null);
+        ReflectionTestUtils.setField(first, "id", 1L);
+        ReflectionTestUtils.setField(second, "id", 2L);
+        when(planService.reorderExercises(user, 10L, List.of(2L, 1L))).thenReturn(List.of(second, first));
+
+        List<PlanExerciseResponse> response =
+                controller.reorderExercises(user, 10L, new PlanExerciseOrderRequest(List.of(2L, 1L)));
+
+        assertThat(response).extracting(PlanExerciseResponse::id).containsExactly(2L, 1L);
     }
 
     @Test

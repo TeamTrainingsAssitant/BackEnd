@@ -10,9 +10,11 @@ import de.trainingsplan.backend.model.User;
 import de.trainingsplan.backend.repository.PlanExerciseRepository;
 import de.trainingsplan.backend.repository.PlanRepository;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -209,6 +211,30 @@ public class PlanService {
                 .forEach(PlanExercise::moveUp);
         planExerciseRepository.delete(exercise);
         plan.touch();
+    }
+
+    /** Setzt die Reihenfolge der Übungen neu, die IDs müssen genau die Übungen des Plans enthalten. */
+    @Transactional
+    public List<PlanExercise> reorderExercises(User user, Long planId, List<Long> exerciseIds) {
+        Plan plan = findOwnPlan(user, planId);
+        List<PlanExercise> current = planExerciseRepository.findByPlanIdOrderByPositionAsc(planId);
+
+        Set<Long> requested = new HashSet<>(exerciseIds);
+        Set<Long> existing = new HashSet<>();
+        current.forEach(exercise -> existing.add(exercise.getId()));
+        if (requested.size() != exerciseIds.size() || !requested.equals(existing)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Order must contain each exercise of the plan exactly once.");
+        }
+
+        Map<Long, PlanExercise> byId = new HashMap<>();
+        current.forEach(exercise -> byId.put(exercise.getId(), exercise));
+        List<PlanExercise> ordered = exerciseIds.stream().map(byId::get).toList();
+        for (int i = 0; i < ordered.size(); i++) {
+            ordered.get(i).moveTo(i + 1);
+        }
+        plan.touch();
+        return ordered;
     }
 
     /** Fremde und unbekannte Pläne verhalten sich gleich: 404. */

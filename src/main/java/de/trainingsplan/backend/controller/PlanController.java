@@ -2,6 +2,7 @@ package de.trainingsplan.backend.controller;
 
 import de.trainingsplan.backend.controller.dto.MessageResponse;
 import de.trainingsplan.backend.controller.dto.ExerciseListItemResponse;
+import de.trainingsplan.backend.controller.dto.PlanExerciseOrderRequest;
 import de.trainingsplan.backend.controller.dto.PlanExerciseRequest;
 import de.trainingsplan.backend.controller.dto.PlanExerciseReplacementRequest;
 import de.trainingsplan.backend.controller.dto.PlanExerciseResponse;
@@ -80,6 +81,14 @@ public class PlanController {
             @PathVariable Long planId, @Valid @RequestBody PlanExerciseRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(PlanExerciseResponse.from(planService.addExercise(user, planId, request)));
+    }
+
+    @PutMapping("/{planId}/exercises/order")
+    public List<PlanExerciseResponse> reorderExercises(@AuthenticationPrincipal User user,
+            @PathVariable Long planId, @Valid @RequestBody PlanExerciseOrderRequest request) {
+        return planService.reorderExercises(user, planId, request.exerciseIds()).stream()
+                .map(PlanExerciseResponse::from)
+                .toList();
     }
 
     @PutMapping("/{planId}/exercises/{planExerciseId}")

@@ -100,6 +100,11 @@ public class PlanExercise {
         this.position--;
     }
 
+    /** Setzt die Position beim Umsortieren der Übungen eines Plans. */
+    public void moveTo(int position) {
+        this.position = position;
+    }
+
     public Long getId() {
         return id;
     }

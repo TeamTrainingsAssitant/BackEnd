@@ -219,6 +219,64 @@ class PlanServiceTest {
         assertThat(fourth.getPosition()).isEqualTo(3);
     }
 
+    private PlanExercise exerciseWithId(long id, String name, int position) {
+        PlanExercise exercise = new PlanExercise(plan, "ext" + id, name, null, List.of(), List.of(), position, null);
+        ReflectionTestUtils.setField(exercise, "id", id);
+        return exercise;
+    }
+
+    @Test
+    void reorderExercisesAssignsPositionsInRequestedOrder() {
+        PlanExercise first = exerciseWithId(1L, "Bankdrücken", 1);
+        PlanExercise second = exerciseWithId(2L, "Kniebeugen", 2);
+        PlanExercise third = exerciseWithId(3L, "Rudern", 3);
+        when(planExerciseRepository.findByPlanIdOrderByPositionAsc(PLAN_ID))
+                .thenReturn(List.of(first, second, third));
+        LocalDateTime before = plan.getUpdatedAt();
+
+        List<PlanExercise> result = planService.reorderExercises(user, PLAN_ID, List.of(3L, 1L, 2L));
+
+        assertThat(result).containsExactly(third, first, second);
+        assertThat(third.getPosition()).isEqualTo(1);
+        assertThat(first.getPosition()).isEqualTo(2);
+        assertThat(second.getPosition()).isEqualTo(3);
+        assertThat(plan.getUpdatedAt()).isAfterOrEqualTo(before);
+    }
+
+    @Test
+    void reorderExercisesRejectsDuplicateIds() {
+        when(planExerciseRepository.findByPlanIdOrderByPositionAsc(PLAN_ID))
+                .thenReturn(List.of(exerciseWithId(1L, "A", 1), exerciseWithId(2L, "B", 2)));
+
+        assertThatThrownBy(() -> planService.reorderExercises(user, PLAN_ID, List.of(1L, 1L)))
+                .isInstanceOfSatisfying(ApiException.class,
+                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void reorderExercisesRejectsMissingOrForeignIds() {
+        PlanExercise first = exerciseWithId(1L, "A", 1);
+        PlanExercise second = exerciseWithId(2L, "B", 2);
+        when(planExerciseRepository.findByPlanIdOrderByPositionAsc(PLAN_ID)).thenReturn(List.of(first, second));
+
+        assertThatThrownBy(() -> planService.reorderExercises(user, PLAN_ID, List.of(1L)))
+                .isInstanceOfSatisfying(ApiException.class,
+                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST));
+        assertThatThrownBy(() -> planService.reorderExercises(user, PLAN_ID, List.of(1L, 99L)))
+                .isInstanceOfSatisfying(ApiException.class,
+                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST));
+        assertThat(first.getPosition()).isEqualTo(1);
+        assertThat(second.getPosition()).isEqualTo(2);
+    }
+
+    @Test
+    void reorderExercisesOfForeignPlanIsNotFound() {
+        assertThatThrownBy(() -> planService.reorderExercises(otherUser, PLAN_ID, List.of(1L)))
+                .isInstanceOfSatisfying(ApiException.class,
+                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.NOT_FOUND));
+        verifyNoInteractions(planExerciseRepository);
+    }
+
     @Test
     void listAsksRepositoryForPlansOfThatUser() {
         List<Plan> plans = List.of(planWithId(user, 10L), planWithId(user, 11L));
