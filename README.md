@@ -1,12 +1,30 @@
 # BackEnd
 
-Spring-Boot-Backend (Java 25) des TrainingsPlanAssistant. Alle Endpunkte liegen unter `/api/v1`.
+Spring-Boot-Backend (Java 25) des TrainingsPlanAssistant. Es verwaltet Benutzer, Trainingspläne und die Übungen darin und ist als einzige Komponente mit der Datenbank und ExerciseDB verbunden. Alle Endpunkte liegen unter `/api/v1`.
+
+```
+Frontend ──▶ REST-API (dieses Repo) ──┬──▶ PostgreSQL
+GraphQL-Gateway ──▶                   └──▶ ExerciseDB
+```
+
+## Stack
+
+Java 25, Spring Boot 4, Spring Security, Spring Data JPA, PostgreSQL, Maven, JUnit, Mockito, AssertJ. Die CI (`.github/workflows/ci.yml`) führt bei jedem Push auf `main` `./mvnw -B verify` aus.
 
 ## Starten und testen
 
+macOS/Linux:
+
 ```
-mvnw.cmd spring-boot:run   # braucht PostgreSQL auf localhost:5432 (DB "trainingsplan")
-mvnw.cmd test              # reine Unit-Tests, keine Datenbank nötig
+./mvnw spring-boot:run     # braucht PostgreSQL auf localhost:5432 (DB "trainingsplan")
+./mvnw test                # reine Unit-Tests, keine Datenbank nötig
+```
+
+Windows:
+
+```
+mvnw.cmd spring-boot:run
+mvnw.cmd test
 ```
 
 Es gibt bewusst nur Unit-Tests (Mockito, ohne Spring-Kontext und ohne Datenbank).
@@ -41,35 +59,39 @@ So wird getestet:
 | Methode | URI | Zugriff | Beschreibung |
 |---|---|---|---|
 | POST | `/users` | öffentlich | Registrieren. Das Passwort wird mit BCrypt gehasht gespeichert. |
-| POST | `/auth` | öffentlich | Login mit `email` und `password`, liefert ein Token. |
-| DELETE | `/auth` | öffentlich | Logout. Das Token steht im Body und wird serverseitig gelöscht. |
+| POST | `/auth` | öffentlich | Login mit `email` und `password`. Das Token kommt im Cookie `capsule_session` (`HttpOnly`), nicht im Body. |
+| DELETE | `/auth` | öffentlich | Logout. Das Token steht im Body oder im Cookie und wird serverseitig gelöscht. |
 | GET | `/users/me` | Token nötig | Profil des angemeldeten Benutzers. |
 | GET | `/users/me/export` | Token nötig | Alle persönlichen Daten als `{"user":{...},"plans":[...]}`, Pläne mit Übungen in Reihenfolge. |
 | DELETE | `/users/me` | Token nötig | Konto löschen. Das Passwort steht im Body (`{"password":"..."}`). Löscht auch alle Pläne und Tokens. Bei falschem Passwort `400`. |
 | GET | `/exercises?name=push&limit=20` | Token nötig | Durchsucht ExerciseDB über das Backend und liefert Übungsname, GIF sowie Muskelgruppen. |
+| GET | `/plans` | Token nötig | Liste der eigenen Pläne. |
+| POST | `/plans` | Token nötig | Legt einen Plan an (`name` Pflicht, optional `description`). |
+| GET, PUT, DELETE | `/plans/{planId}` | Token nötig | Plan lesen, ändern oder samt Übungen löschen. |
 | GET | `/plans/{planId}/exercises` | Token nötig | Liefert die Übungen eines eigenen Plans in Positionsreihenfolge. |
 | POST | `/plans/{planId}/exercises` | Token nötig | Fügt eine ExerciseDB-Übung hinzu (`externalId`, optional `note`, `weight` in kg von 0 bis 1000, `sets` von 1 bis 20, `reps` von 1 bis 100). Werte außerhalb der Grenzen: `400`. |
-| PUT | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Ersetzt `note`, `weight`, `sets` und `reps` einer Planübung (gleiche Grenzen wie oben). Ein fehlendes Feld oder `null` entfernt den Wert. |
+| PUT | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Ersetzt `note`, `weight`, `sets` und `reps` einer Planübung (gleiche Grenzen wie oben). Ein fehlendes Feld oder `null` entfernt den Wert. Optional `trainingSets`: bis zu 20 einzelne Sätze mit `weight`, `reps` und `completed`. |
 | GET | `/plans/{planId}/exercises/{planExerciseId}/alternatives?limit=5` | Token nötig | Empfiehlt bis zu 20 noch nicht im Plan enthaltene Übungen mit möglichst ähnlichen Muskelgruppen. Standard: 5 Vorschläge. |
 | PUT | `/plans/{planId}/exercises/{planExerciseId}/replacement` | Token nötig | Ersetzt die Übung mit `{"externalId":"..."}` und behält Position, Notiz sowie Sätze, Wiederholungen und Gewicht. |
 | PUT | `/plans/{planId}/exercises/order` | Token nötig | Ändert die Reihenfolge der Übungen. Der Body enthält alle `planExerciseId`s des Plans in der neuen Reihenfolge (`{"exerciseIds":[3,1,2]}`), die Positionen werden ab 1 neu vergeben. Antwort: die Übungen in neuer Reihenfolge. Doppelte, fehlende oder fremde IDs: `400`, fremder oder unbekannter Plan: `404`. |
 | DELETE | `/plans/{planId}/exercises/{planExerciseId}` | Token nötig | Entfernt eine Übung aus einem Plan. |
 
-**Alle anderen Endpunkte verlangen den Header `Authorization: Bearer <token>`.**
+**Alle anderen Endpunkte verlangen den Header `Authorization: Bearer <token>` oder das Cookie `capsule_session`.**
 Ohne gültiges Token antwortet das Backend mit `401 {"message":"Not authenticated."}`.
 
 ### Ablauf
 
 1. Registrieren: `POST /users` mit `{"username","email","password"}`. Das Passwort braucht mindestens 8 Zeichen.
-2. Einloggen: `POST /auth` mit `{"email","password"}` liefert `{"message":"User logged on.","token":"..."}`.
-3. Token bei jedem weiteren Aufruf im Header `Authorization: Bearer <token>` mitsenden.
-4. Ausloggen: `DELETE /auth` mit `{"token":"..."}`. Danach ist das Token ungültig.
+2. Einloggen: `POST /auth` mit `{"email","password"}` liefert `{"message":"User logged on.","token":null}` und setzt das Cookie `capsule_session`.
+3. Cookie bei jedem weiteren Aufruf mitsenden oder seinen Wert im Header `Authorization: Bearer <token>` übergeben.
+4. Ausloggen: `DELETE /auth` mit `{"token":"..."}` oder mit dem Cookie. Danach ist das Token ungültig.
 
 ```
 curl -X POST http://localhost:8080/api/v1/users -H "Content-Type: application/json" \
   -d '{"username":"max","email":"max@mosbach.de","password":"super-safe"}'
 
-curl -X POST http://localhost:8080/api/v1/auth -H "Content-Type: application/json" \
+# -i zeigt den Header Set-Cookie, dort steht der Wert für <token>
+curl -i -X POST http://localhost:8080/api/v1/auth -H "Content-Type: application/json" \
   -d '{"email":"max@mosbach.de","password":"super-safe"}'
 
 curl http://localhost:8080/api/v1/users/me -H "Authorization: Bearer <token>"
