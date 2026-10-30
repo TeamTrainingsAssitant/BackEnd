@@ -40,9 +40,11 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                 if ("capsule_session".equals(cookie.getName())) token = cookie.getValue();
             }
         }
-        tokenService.findUserByToken(token).ifPresent(user ->
-                SecurityContextHolder.getContext().setAuthentication(
-                        UsernamePasswordAuthenticationToken.authenticated(user, null, List.of())));
+        if (token != null) {
+            tokenService.findUserByToken(token).ifPresent(user ->
+                    SecurityContextHolder.getContext().setAuthentication(
+                            UsernamePasswordAuthenticationToken.authenticated(user, null, List.of())));
+        }
         chain.doFilter(request, response);
     }
 }
