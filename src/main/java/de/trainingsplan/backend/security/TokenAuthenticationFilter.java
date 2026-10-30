@@ -31,12 +31,18 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+        String token = null;
         if (header != null && header.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
-            String token = header.substring(BEARER_PREFIX.length()).trim();
-            tokenService.findUserByToken(token).ifPresent(user ->
-                    SecurityContextHolder.getContext().setAuthentication(
-                            UsernamePasswordAuthenticationToken.authenticated(user, null, List.of())));
+            token = header.substring(BEARER_PREFIX.length()).trim();
         }
+        if (token == null && request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("capsule_session".equals(cookie.getName())) token = cookie.getValue();
+            }
+        }
+        tokenService.findUserByToken(token).ifPresent(user ->
+                SecurityContextHolder.getContext().setAuthentication(
+                        UsernamePasswordAuthenticationToken.authenticated(user, null, List.of())));
         chain.doFilter(request, response);
     }
 }

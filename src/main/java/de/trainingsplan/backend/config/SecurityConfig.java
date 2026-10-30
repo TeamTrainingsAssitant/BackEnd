@@ -31,8 +31,8 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
     /**
-     * Öffentlich sind nur Registrierung und Login/Logout (das Logout-Token steht im Body).
-     * Alle anderen Endpunkte erfordern ein gültiges Bearer-Token.
+     * Öffentlich sind nur Registrierung und Login/Logout. Geschützte Endpunkte akzeptieren
+     * ein gültiges Bearer-Token oder die HttpOnly-Session-Cookie.
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenService tokenService)
