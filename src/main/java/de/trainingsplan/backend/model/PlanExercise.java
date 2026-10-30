@@ -10,7 +10,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
 import java.util.List;
 
 /** Eine Übung in einem Plan. Name, gifUrl und Muskeln sind von ExerciseDB kopiert. */
@@ -57,6 +59,11 @@ public class PlanExercise {
 
     private Integer reps;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "plan_exercise_training_sets", joinColumns = @JoinColumn(name = "plan_exercise_id"))
+    @OrderColumn(name = "set_position")
+    private List<TrainingSet> trainingSets = new ArrayList<>();
+
     protected PlanExercise() {
     }
 
@@ -83,6 +90,17 @@ public class PlanExercise {
         this.weight = weight;
         this.sets = sets;
         this.reps = reps;
+        this.trainingSets.clear();
+    }
+
+    /** Ersetzt die einzelnen Sätze und hält die bisherigen Summenfelder kompatibel. */
+    public void updateTrainingSets(List<TrainingSet> trainingSets) {
+        this.trainingSets.clear();
+        this.trainingSets.addAll(trainingSets);
+        this.sets = trainingSets.size();
+        TrainingSet first = trainingSets.isEmpty() ? null : trainingSets.get(0);
+        this.weight = first == null ? null : first.getWeight();
+        this.reps = first == null ? null : first.getReps();
     }
 
     /** Ersetzt die ExerciseDB-Daten, ohne Position, Notiz oder Trainingswerte anzutasten. */
@@ -151,5 +169,9 @@ public class PlanExercise {
 
     public Integer getReps() {
         return reps;
+    }
+
+    public List<TrainingSet> getTrainingSets() {
+        return trainingSets;
     }
 }

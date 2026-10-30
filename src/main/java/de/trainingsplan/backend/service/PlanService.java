@@ -105,7 +105,11 @@ public class PlanService {
         PlanExercise exercise = planExerciseRepository.findByIdAndPlanId(planExerciseId, planId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exercise not found."));
         exercise.updateNote(request.note());
-        exercise.updateTraining(request.weight(), request.sets(), request.reps());
+        if (request.trainingSets() != null) {
+            exercise.updateTrainingSets(request.trainingSets().stream().map(dto -> dto.toModel()).toList());
+        } else {
+            exercise.updateTraining(request.weight(), request.sets(), request.reps());
+        }
         plan.touch();
         return exercise;
     }
