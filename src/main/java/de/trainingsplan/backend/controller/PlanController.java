@@ -57,6 +57,14 @@ public class PlanController {
         return PlanResponse.from(planService.get(user, planId));
     }
 
+    @GetMapping("/{planId}/exercises")
+    public List<PlanExerciseResponse> listExercises(@AuthenticationPrincipal User user,
+            @PathVariable Long planId) {
+        return planService.listExercises(user, planId).stream()
+                .map(PlanExerciseResponse::from)
+                .toList();
+    }
+
     @PutMapping("/{planId}")
     public PlanResponse update(@AuthenticationPrincipal User user, @PathVariable Long planId,
             @Valid @RequestBody PlanRequest request) {
