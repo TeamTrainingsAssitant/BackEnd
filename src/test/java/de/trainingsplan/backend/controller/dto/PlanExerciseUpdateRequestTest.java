@@ -45,10 +45,10 @@ class PlanExerciseUpdateRequestTest {
     }
 
     @Test
-    void partialLegacyTrainingValuesAreRejected() {
-        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 82.5, null, null)))
-                .anySatisfy(violation -> assertThat(violation.getPropertyPath())
-                        .hasToString("legacyTrainingComplete"));
+    void partialLegacyTrainingValuesAreAllowed() {
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 82.5, null, null))).isEmpty();
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, 4, null))).isEmpty();
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, null, 8))).isEmpty();
     }
 
     @Test

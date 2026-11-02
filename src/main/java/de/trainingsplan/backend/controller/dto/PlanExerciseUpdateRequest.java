@@ -5,7 +5,6 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.Valid;
 import java.util.List;
 
@@ -15,13 +14,6 @@ public record PlanExerciseUpdateRequest(@Size(max = 500) String note,
 
     public PlanExerciseUpdateRequest(String note, Double weight, Integer sets, Integer reps) {
         this(note, weight, sets, reps, null);
-    }
-
-    @AssertTrue(message = "Legacy training values must include weight, sets, and reps.")
-    public boolean isLegacyTrainingComplete() {
-        boolean noneProvided = weight == null && sets == null && reps == null;
-        boolean allProvided = weight != null && sets != null && reps != null;
-        return trainingSets != null || noneProvided || allProvided;
     }
 
 }
