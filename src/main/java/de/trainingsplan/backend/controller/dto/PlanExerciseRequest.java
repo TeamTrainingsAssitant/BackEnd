@@ -7,7 +7,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.AssertTrue;
 import java.util.List;
 
 public record PlanExerciseRequest(@NotBlank String externalId, @Size(max = 500) String note,
@@ -16,16 +15,6 @@ public record PlanExerciseRequest(@NotBlank String externalId, @Size(max = 500) 
 
     public PlanExerciseRequest(String externalId, String note, Double weight, Integer sets, Integer reps) {
         this(externalId, note, weight, sets, reps, null);
-    }
-
-    @AssertTrue(message = "Legacy training values must include weight, sets, and reps.")
-    public boolean isLegacyTrainingComplete() {
-        boolean noneProvided = weight == null && sets == null && reps == null;
-        boolean allProvided = weight != null && sets != null && reps != null;
-        boolean invalidField = weight != null && (weight < 0 || weight > 1000)
-                || sets != null && (sets < 1 || sets > 20)
-                || reps != null && (reps < 1 || reps > 100);
-        return trainingSets != null || noneProvided || allProvided || invalidField;
     }
 
 }

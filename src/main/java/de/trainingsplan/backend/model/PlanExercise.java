@@ -173,7 +173,7 @@ public class PlanExercise {
 
     @Transient
     public Integer getSets() {
-        return trainingSets.isEmpty() ? sets : trainingSets.size();
+        return trainingSets.isEmpty() ? sets : Integer.valueOf(trainingSets.size());
     }
 
     @Transient
