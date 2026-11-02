@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -26,8 +27,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatus()).body(new MessageResponse(ex.getMessage()));
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
-            MethodArgumentTypeMismatchException.class})
+    /** Nennt das erste ungültige Feld, ohne den gesendeten Wert zu wiederholen. */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<MessageResponse> handleValidationError(MethodArgumentNotValidException ex) {
+        FieldError error = ex.getBindingResult().getFieldError();
+        String message = error == null ? "Invalid request." : error.getField() + " " + error.getDefaultMessage();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new MessageResponse(message));
+    }
+
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
     public ResponseEntity<MessageResponse> handleInvalidRequest(Exception ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new MessageResponse("Invalid request."));
     }

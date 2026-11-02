@@ -16,6 +16,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -107,14 +108,29 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void validationErrorIsBadRequestWithGenericMessage() throws Exception {
+    void validationErrorNamesTheField() throws Exception {
+        MethodParameter parameter =
+                new MethodParameter(getClass().getDeclaredMethod("dummyControllerMethod", String.class), 0);
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "request");
+        bindingResult.addError(new FieldError("request", "weight", "must be less than or equal to 1000"));
+
+        ResponseEntity<MessageResponse> response =
+                handler.handleValidationError(new MethodArgumentNotValidException(parameter, bindingResult));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody())
+                .isEqualTo(new MessageResponse("weight must be less than or equal to 1000"));
+    }
+
+    @Test
+    void validationErrorWithoutFieldHasGenericMessage() throws Exception {
         MethodParameter parameter =
                 new MethodParameter(getClass().getDeclaredMethod("dummyControllerMethod", String.class), 0);
         BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "planRequest");
         bindingResult.rejectValue(null, "NotBlank", "name must not be blank");
 
         ResponseEntity<MessageResponse> response =
-                handler.handleInvalidRequest(new MethodArgumentNotValidException(parameter, bindingResult));
+                handler.handleValidationError(new MethodArgumentNotValidException(parameter, bindingResult));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isEqualTo(new MessageResponse("Invalid request."));
