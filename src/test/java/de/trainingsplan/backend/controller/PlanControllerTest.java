@@ -7,11 +7,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import de.trainingsplan.backend.controller.dto.MessageResponse;
+import de.trainingsplan.backend.controller.dto.PlanExerciseReplacementRequest;
 import de.trainingsplan.backend.controller.dto.PlanExerciseOrderRequest;
+import de.trainingsplan.backend.controller.dto.PlanExerciseRequest;
 import de.trainingsplan.backend.controller.dto.PlanExerciseResponse;
+import de.trainingsplan.backend.controller.dto.PlanExerciseUpdateRequest;
 import de.trainingsplan.backend.controller.dto.PlanListItemResponse;
 import de.trainingsplan.backend.controller.dto.PlanRequest;
 import de.trainingsplan.backend.controller.dto.PlanResponse;
+import de.trainingsplan.backend.controller.dto.TrainingSetRequest;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.Plan;
 import de.trainingsplan.backend.model.PlanExercise;
@@ -42,6 +46,14 @@ class PlanControllerTest {
         Plan plan = new Plan(user, name, "Beschreibung");
         ReflectionTestUtils.setField(plan, "id", id);
         return plan;
+    }
+
+    private PlanExercise exerciseWithId(Plan plan, long id, int position) {
+        PlanExercise exercise = new PlanExercise(plan, "bench-press", "Bankdrücken", "gif",
+                List.of("pectorals"), List.of("triceps"), position, "Notiz");
+        ReflectionTestUtils.setField(exercise, "id", id);
+        exercise.updateTrainingSets(List.of(new de.trainingsplan.backend.model.TrainingSet(80.0, 10)));
+        return exercise;
     }
 
     @Test
@@ -106,6 +118,145 @@ class PlanControllerTest {
 
         verify(planService).delete(user, 10L);
         assertThat(response.message()).isEqualTo("Plan deleted.");
+    }
+
+    @Test
+    void listExercisesMapsExercisesAndTrainingValues() {
+        Plan plan = planWithId(10L, "Push Day");
+        PlanExercise exercise = exerciseWithId(plan, 7L, 1);
+        when(planService.listExercises(user, 10L)).thenReturn(List.of(exercise));
+
+        List<PlanExerciseResponse> response = controller.listExercises(user, 10L);
+
+        assertThat(response).hasSize(1);
+        assertThat(response.get(0).id()).isEqualTo(7L);
+        assertThat(response.get(0).name()).isEqualTo("Bankdrücken");
+        assertThat(response.get(0).weight()).isEqualTo(80.0);
+        assertThat(response.get(0).sets()).isEqualTo(1);
+        assertThat(response.get(0).reps()).isEqualTo(10);
+        assertThat(response.get(0).trainingSets()).hasSize(1);
+        verify(planService).listExercises(user, 10L);
+    }
+
+    @Test
+    void addExerciseReturnsCreatedAndMappedExercise() {
+        Plan plan = planWithId(10L, "Push Day");
+        PlanExercise exercise = exerciseWithId(plan, 7L, 1);
+        PlanExerciseRequest request = new PlanExerciseRequest("bench-press", "Notiz", 80.0, 1, 10,
+                List.of(new TrainingSetRequest(80.0, 10)));
+        when(planService.addExercise(user, 10L, request)).thenReturn(exercise);
+
+        ResponseEntity<PlanExerciseResponse> response = controller.addExercise(user, 10L, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().id()).isEqualTo(7L);
+        assertThat(response.getBody().weight()).isEqualTo(80.0);
+        verify(planService).addExercise(user, 10L, request);
+    }
+
+    @Test
+    void updateExerciseMapsUpdatedExercise() {
+        Plan plan = planWithId(10L, "Push Day");
+        PlanExercise exercise = exerciseWithId(plan, 7L, 1);
+        PlanExerciseUpdateRequest request = new PlanExerciseUpdateRequest("Neue Notiz", 90.0, 1, 8);
+        when(planService.updateExercise(user, 10L, 7L, request)).thenReturn(exercise);
+
+        PlanExerciseResponse response = controller.updateExercise(user, 10L, 7L, request);
+
+        assertThat(response.id()).isEqualTo(7L);
+        assertThat(response.note()).isEqualTo("Notiz");
+        assertThat(response.trainingSets()).extracting("weight").containsExactly(80.0);
+        verify(planService).updateExercise(user, 10L, 7L, request);
+    }
+
+    @Test
+    void deleteExerciseCallsServiceAndReturnsMessage() {
+        MessageResponse response = controller.deleteExercise(user, 10L, 7L);
+
+        verify(planService).deleteExercise(user, 10L, 7L);
+        assertThat(response.message()).isEqualTo("Exercise removed.");
+    }
+
+    @Test
+    void alternativesMapsExercisesFromService() {
+        Plan plan = planWithId(10L, "Push Day");
+        PlanExercise exercise = exerciseWithId(plan, 8L, 2);
+        when(planService.alternatives(user, 10L, 7L, 5)).thenReturn(List.of(
+                new de.trainingsplan.backend.service.ExerciseDbClient.ExternalExercise(
+                        "incline-press", "Schrägbankdrücken", "gif", List.of("pectorals"),
+                        List.of("triceps"), List.of("chest"), List.of("barbell"), List.of())));
+
+        var response = controller.alternatives(user, 10L, 7L, 5);
+
+        assertThat(response).hasSize(1);
+        assertThat(response.get(0).externalId()).isEqualTo("incline-press");
+        verify(planService).alternatives(user, 10L, 7L, 5);
+    }
+
+    @Test
+    void replaceExerciseMapsReplacement() {
+        Plan plan = planWithId(10L, "Push Day");
+        PlanExercise exercise = exerciseWithId(plan, 7L, 1);
+        PlanExerciseReplacementRequest request = new PlanExerciseReplacementRequest("incline-press");
+        when(planService.replaceExercise(user, 10L, 7L, "incline-press")).thenReturn(exercise);
+
+        PlanExerciseResponse response = controller.replaceExercise(user, 10L, 7L, request);
+
+        assertThat(response.id()).isEqualTo(7L);
+        assertThat(response.externalId()).isEqualTo("bench-press");
+        verify(planService).replaceExercise(user, 10L, 7L, "incline-press");
+    }
+
+    @Test
+    void exerciseEndpointErrorsArePassedThrough() {
+        ApiException notFound = new ApiException(HttpStatus.NOT_FOUND, "Exercise not found.");
+        when(planService.listExercises(user, 99L)).thenThrow(notFound);
+
+        assertThatThrownBy(() -> controller.listExercises(user, 99L)).isSameAs(notFound);
+    }
+
+    @Test
+    void addExerciseErrorIsPassedThrough() {
+        ApiException conflict = new ApiException(HttpStatus.CONFLICT, "Exercise already exists.");
+        PlanExerciseRequest request = new PlanExerciseRequest("bench-press", null, null, null, null);
+        when(planService.addExercise(user, 10L, request)).thenThrow(conflict);
+
+        assertThatThrownBy(() -> controller.addExercise(user, 10L, request)).isSameAs(conflict);
+    }
+
+    @Test
+    void updateExerciseErrorIsPassedThrough() {
+        ApiException badRequest = new ApiException(HttpStatus.BAD_REQUEST, "Invalid request.");
+        PlanExerciseUpdateRequest request = new PlanExerciseUpdateRequest(null, null, null, null);
+        when(planService.updateExercise(user, 10L, 7L, request)).thenThrow(badRequest);
+
+        assertThatThrownBy(() -> controller.updateExercise(user, 10L, 7L, request)).isSameAs(badRequest);
+    }
+
+    @Test
+    void deleteExerciseErrorIsPassedThrough() {
+        ApiException notFound = new ApiException(HttpStatus.NOT_FOUND, "Exercise not found.");
+        org.mockito.Mockito.doThrow(notFound).when(planService).deleteExercise(user, 10L, 7L);
+
+        assertThatThrownBy(() -> controller.deleteExercise(user, 10L, 7L)).isSameAs(notFound);
+    }
+
+    @Test
+    void alternativesErrorIsPassedThrough() {
+        ApiException notFound = new ApiException(HttpStatus.NOT_FOUND, "Exercise not found.");
+        when(planService.alternatives(user, 10L, 7L, 5)).thenThrow(notFound);
+
+        assertThatThrownBy(() -> controller.alternatives(user, 10L, 7L, 5)).isSameAs(notFound);
+    }
+
+    @Test
+    void replaceExerciseErrorIsPassedThrough() {
+        ApiException notFound = new ApiException(HttpStatus.NOT_FOUND, "Exercise not found.");
+        PlanExerciseReplacementRequest request = new PlanExerciseReplacementRequest("incline-press");
+        when(planService.replaceExercise(user, 10L, 7L, "incline-press")).thenThrow(notFound);
+
+        assertThatThrownBy(() -> controller.replaceExercise(user, 10L, 7L, request)).isSameAs(notFound);
     }
 
     @Test

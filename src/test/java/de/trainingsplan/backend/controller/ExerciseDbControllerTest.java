@@ -57,6 +57,14 @@ class ExerciseDbControllerTest {
     }
 
     @Test
+    void listPropagatesCatalogErrors() {
+        ApiException unavailable = new ApiException(HttpStatus.BAD_GATEWAY, "ExerciseDB not reachable.");
+        when(catalog.search("bench", null, 0, 20)).thenThrow(unavailable);
+
+        assertThatThrownBy(() -> controller.list("bench", null, 0, 20)).isSameAs(unavailable);
+    }
+
+    @Test
     void getReturnsDetailsWithInstructions() {
         when(catalog.findById("EIeI8Vf")).thenReturn(bench);
 
