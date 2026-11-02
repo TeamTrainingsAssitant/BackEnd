@@ -45,6 +45,37 @@ class PlanExerciseUpdateRequestTest {
     }
 
     @Test
+    void partialLegacyTrainingValuesAreRejected() {
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 82.5, null, null)))
+                .anySatisfy(violation -> assertThat(violation.getPropertyPath())
+                        .hasToString("legacyTrainingComplete"));
+    }
+
+    @Test
+    void validIndividualSetsHaveNoViolations() {
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, null, null, java.util.List.of(
+                new TrainingSetRequest(80.0, 10, false), new TrainingSetRequest(70.0, 8, true))))).isEmpty();
+    }
+
+    @Test
+    void emptyTrainingSetsAreRejected() {
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, null, null, java.util.List.of())))
+                .anySatisfy(violation -> assertThat(violation.getPropertyPath()).hasToString("trainingSets"));
+    }
+
+    @Test
+    void weightAndRepsAreRequiredInEverySet() {
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, null, null,
+                java.util.List.of(new TrainingSetRequest(null, 10, false)))))
+                .anySatisfy(violation -> assertThat(violation.getPropertyPath())
+                        .hasToString("trainingSets[0].weight"));
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, null, null,
+                java.util.List.of(new TrainingSetRequest(80.0, null, false)))))
+                .anySatisfy(violation -> assertThat(violation.getPropertyPath())
+                        .hasToString("trainingSets[0].reps"));
+    }
+
+    @Test
     void weightBoundsAreInclusive() {
         assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 0.0, null, null))).isEmpty();
         assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 1000.0, null, null))).isEmpty();

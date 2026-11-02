@@ -1,6 +1,7 @@
 package de.trainingsplan.backend.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,29 @@ class PlanExerciseTest {
         assertThat(exercise.getWeight()).isNull();
         assertThat(exercise.getSets()).isNull();
         assertThat(exercise.getReps()).isNull();
+    }
+
+    @Test
+    void updateTrainingSetsUsesTheWholeListAndDerivesLegacySummary() {
+        PlanExercise exercise = exercise();
+
+        exercise.updateTrainingSets(List.of(
+                new TrainingSet(80.0, 10, true),
+                new TrainingSet(70.0, 8, false),
+                new TrainingSet(60.0, 6, false)));
+
+        assertThat(exercise.getTrainingSets()).hasSize(3);
+        assertThat(exercise.getSets()).isEqualTo(3);
+        assertThat(exercise.getWeight()).isEqualTo(80.0);
+        assertThat(exercise.getReps()).isEqualTo(10);
+    }
+
+    @Test
+    void updateTrainingSetsRejectsAnEmptyList() {
+        PlanExercise exercise = exercise();
+
+        assertThatThrownBy(() -> exercise.updateTrainingSets(List.of()))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

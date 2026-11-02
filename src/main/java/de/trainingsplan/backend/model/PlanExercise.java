@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,11 +53,14 @@ public class PlanExercise {
     @Column(length = 500)
     private String note;
 
-    /** Gewicht in kg, optional. */
+    // Read-only fallback for rows created before trainingSets became canonical.
+    @Column(insertable = false, updatable = false)
     private Double weight;
 
+    @Column(insertable = false, updatable = false)
     private Integer sets;
 
+    @Column(insertable = false, updatable = false)
     private Integer reps;
 
     @ElementCollection(fetch = FetchType.EAGER)
@@ -87,20 +91,23 @@ public class PlanExercise {
 
     /** Ersetzt Gewicht, Sätze und Wiederholungen, null entfernt den jeweiligen Wert. */
     public void updateTraining(Double weight, Integer sets, Integer reps) {
-        this.weight = weight;
-        this.sets = sets;
-        this.reps = reps;
-        this.trainingSets.clear();
+        if (weight == null && sets == null && reps == null) {
+            this.trainingSets.clear();
+            return;
+        }
+        int count = sets == null ? 1 : sets;
+        List<TrainingSet> values = new ArrayList<>();
+        for (int i = 0; i < count; i++) values.add(new TrainingSet(weight, reps, false));
+        updateTrainingSets(values);
     }
 
     /** Ersetzt die einzelnen Sätze und hält die bisherigen Summenfelder kompatibel. */
     public void updateTrainingSets(List<TrainingSet> trainingSets) {
+        if (trainingSets == null || trainingSets.isEmpty()) {
+            throw new IllegalArgumentException("At least one training set is required.");
+        }
         this.trainingSets.clear();
         this.trainingSets.addAll(trainingSets);
-        this.sets = trainingSets.size();
-        TrainingSet first = trainingSets.isEmpty() ? null : trainingSets.get(0);
-        this.weight = first == null ? null : first.getWeight();
-        this.reps = first == null ? null : first.getReps();
     }
 
     /** Ersetzt die ExerciseDB-Daten, ohne Position, Notiz oder Trainingswerte anzutasten. */
@@ -159,16 +166,19 @@ public class PlanExercise {
         return note;
     }
 
+    @Transient
     public Double getWeight() {
-        return weight;
+        return trainingSets.isEmpty() ? weight : trainingSets.get(0).getWeight();
     }
 
+    @Transient
     public Integer getSets() {
-        return sets;
+        return trainingSets.isEmpty() ? sets : trainingSets.size();
     }
 
+    @Transient
     public Integer getReps() {
-        return reps;
+        return trainingSets.isEmpty() ? reps : trainingSets.get(0).getReps();
     }
 
     public List<TrainingSet> getTrainingSets() {

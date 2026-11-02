@@ -83,7 +83,11 @@ public class PlanService {
         int position = planExerciseRepository.countByPlanId(planId) + 1;
         PlanExercise exercise = new PlanExercise(plan, external.externalId(), external.name(), external.gifUrl(),
                 external.primaryMuscleGroups(), external.secondaryMuscleGroups(), position, request.note());
-        exercise.updateTraining(request.weight(), request.sets(), request.reps());
+        if (request.trainingSets() != null) {
+            exercise.updateTrainingSets(request.trainingSets().stream().map(dto -> dto.toModel()).toList());
+        } else {
+            exercise.updateTraining(request.weight(), request.sets(), request.reps());
+        }
         plan.touch();
         return planExerciseRepository.save(exercise);
     }
@@ -107,7 +111,7 @@ public class PlanService {
         exercise.updateNote(request.note());
         if (request.trainingSets() != null) {
             exercise.updateTrainingSets(request.trainingSets().stream().map(dto -> dto.toModel()).toList());
-        } else {
+        } else if (request.weight() != null || request.sets() != null || request.reps() != null) {
             exercise.updateTraining(request.weight(), request.sets(), request.reps());
         }
         plan.touch();

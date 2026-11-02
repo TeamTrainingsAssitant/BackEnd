@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import de.trainingsplan.backend.controller.dto.PlanExerciseRequest;
 import de.trainingsplan.backend.controller.dto.PlanExerciseUpdateRequest;
 import de.trainingsplan.backend.controller.dto.PlanRequest;
+import de.trainingsplan.backend.controller.dto.TrainingSetRequest;
 import de.trainingsplan.backend.exception.ApiException;
 import de.trainingsplan.backend.model.Plan;
 import de.trainingsplan.backend.model.PlanExercise;
@@ -152,7 +153,23 @@ class PlanServiceTest {
     }
 
     @Test
-    void updateExerciseReplacesAndRemovesWeightSetsAndReps() {
+    void addExerciseAcceptsIndividualTrainingSets() {
+        when(exerciseCatalog.findById("01qpYSe")).thenReturn(new ExerciseDbClient.ExternalExercise(
+                "01qpYSe", "upward facing dog", null, List.of(), List.of(), List.of(), List.of(), List.of()));
+        when(planExerciseRepository.countByPlanId(PLAN_ID)).thenReturn(0);
+
+        planService.addExercise(user, PLAN_ID, new PlanExerciseRequest("01qpYSe", null, null, null, null,
+                List.of(new TrainingSetRequest(80.0, 10, false),
+                        new TrainingSetRequest(70.0, 8, false))));
+
+        ArgumentCaptor<PlanExercise> saved = ArgumentCaptor.forClass(PlanExercise.class);
+        verify(planExerciseRepository).save(saved.capture());
+        assertThat(saved.getValue().getTrainingSets()).hasSize(2);
+        assertThat(saved.getValue().getTrainingSets()).extracting("weight").containsExactly(80.0, 70.0);
+    }
+
+    @Test
+    void updateExerciseChangesTrainingValuesAndPreservesThemWhenOmitted() {
         PlanExercise exercise = new PlanExercise(plan, "01qpYSe", "upward facing dog", null,
                 List.of(), List.of(), 1, null);
         when(planExerciseRepository.findByIdAndPlanId(7L, PLAN_ID)).thenReturn(Optional.of(exercise));
@@ -162,10 +179,10 @@ class PlanServiceTest {
         assertThat(exercise.getSets()).isEqualTo(3);
         assertThat(exercise.getReps()).isEqualTo(10);
 
-        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest(null, null, null, null));
-        assertThat(exercise.getWeight()).isNull();
-        assertThat(exercise.getSets()).isNull();
-        assertThat(exercise.getReps()).isNull();
+        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest("new note", null, null, null));
+        assertThat(exercise.getWeight()).isEqualTo(60.0);
+        assertThat(exercise.getSets()).isEqualTo(3);
+        assertThat(exercise.getReps()).isEqualTo(10);
     }
 
     @Test
@@ -178,7 +195,7 @@ class PlanServiceTest {
         planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest(null, 70.0, null, null));
 
         assertThat(exercise.getWeight()).isEqualTo(70.0);
-        assertThat(exercise.getSets()).isNull();
+        assertThat(exercise.getSets()).isEqualTo(1);
         assertThat(exercise.getReps()).isNull();
     }
 
