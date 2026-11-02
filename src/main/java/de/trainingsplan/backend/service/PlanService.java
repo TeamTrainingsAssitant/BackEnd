@@ -87,6 +87,8 @@ public class PlanService {
             exercise.updateTrainingSets(request.trainingSets().stream().map(dto -> dto.toModel()).toList());
         } else if (request.weight() != null || request.sets() != null || request.reps() != null) {
             exercise.updateTraining(request.weight(), request.sets(), request.reps());
+        } else {
+            exercise.updateTraining(null, 1, null);
         }
         plan.touch();
         return planExerciseRepository.save(exercise);
