@@ -85,7 +85,7 @@ public class PlanService {
                 external.primaryMuscleGroups(), external.secondaryMuscleGroups(), position, request.note());
         if (request.trainingSets() != null) {
             exercise.updateTrainingSets(request.trainingSets().stream().map(dto -> dto.toModel()).toList());
-        } else {
+        } else if (request.weight() != null || request.sets() != null || request.reps() != null) {
             exercise.updateTraining(request.weight(), request.sets(), request.reps());
         }
         plan.touch();
