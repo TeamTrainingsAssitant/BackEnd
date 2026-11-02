@@ -21,7 +21,10 @@ public record PlanExerciseUpdateRequest(@Size(max = 500) String note,
     public boolean isLegacyTrainingComplete() {
         boolean noneProvided = weight == null && sets == null && reps == null;
         boolean allProvided = weight != null && sets != null && reps != null;
-        return trainingSets != null || noneProvided || allProvided;
+        boolean invalidField = weight != null && (weight < 0 || weight > 1000)
+                || sets != null && (sets < 1 || sets > 20)
+                || reps != null && (reps < 1 || reps > 100);
+        return trainingSets != null || noneProvided || allProvided || invalidField;
     }
 
 }
