@@ -77,37 +77,37 @@ class PlanExerciseUpdateRequestTest {
 
     @Test
     void weightBoundsAreInclusive() {
-        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 0.0, null, null))).isEmpty();
-        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 1000.0, null, null))).isEmpty();
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 0.0, 1, 1))).isEmpty();
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 1000.0, 1, 1))).isEmpty();
     }
 
     @Test
     void weightOutsideBoundsIsRejected() {
-        assertSingleViolation(new PlanExerciseUpdateRequest(null, -0.1, null, null), "weight");
-        assertSingleViolation(new PlanExerciseUpdateRequest(null, 1000.1, null, null), "weight");
+        assertSingleViolation(new PlanExerciseUpdateRequest(null, -0.1, 1, 1), "weight");
+        assertSingleViolation(new PlanExerciseUpdateRequest(null, 1000.1, 1, 1), "weight");
     }
 
     @Test
     void setsBoundsAreInclusive() {
-        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, 1, null))).isEmpty();
-        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, 20, null))).isEmpty();
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 0.0, 1, 1))).isEmpty();
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 0.0, 20, 1))).isEmpty();
     }
 
     @Test
     void setsOutsideBoundsAreRejected() {
-        assertSingleViolation(new PlanExerciseUpdateRequest(null, null, 0, null), "sets");
-        assertSingleViolation(new PlanExerciseUpdateRequest(null, null, 21, null), "sets");
+        assertSingleViolation(new PlanExerciseUpdateRequest(null, 0.0, 0, 1), "sets");
+        assertSingleViolation(new PlanExerciseUpdateRequest(null, 0.0, 21, 1), "sets");
     }
 
     @Test
     void repsBoundsAreInclusive() {
-        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, null, 1))).isEmpty();
-        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, null, 100))).isEmpty();
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 0.0, 1, 1))).isEmpty();
+        assertThat(validator.validate(new PlanExerciseUpdateRequest(null, 0.0, 1, 100))).isEmpty();
     }
 
     @Test
     void repsOutsideBoundsAreRejected() {
-        assertSingleViolation(new PlanExerciseUpdateRequest(null, null, null, 0), "reps");
-        assertSingleViolation(new PlanExerciseUpdateRequest(null, null, null, 101), "reps");
+        assertSingleViolation(new PlanExerciseUpdateRequest(null, 0.0, 1, 0), "reps");
+        assertSingleViolation(new PlanExerciseUpdateRequest(null, 0.0, 1, 101), "reps");
     }
 }
