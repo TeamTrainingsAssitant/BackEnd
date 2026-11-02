@@ -2,6 +2,9 @@ package de.trainingsplan.backend.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import de.trainingsplan.backend.controller.dto.MessageResponse;
 import org.junit.jupiter.api.Test;
@@ -10,13 +13,38 @@ import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RestController;
 
 class GlobalExceptionHandlerTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+    @RestController
+    static class IdController {
+
+        @GetMapping("/items/{id}")
+        String get(@PathVariable Long id) {
+            return "ok";
+        }
+    }
+
+    @Test
+    void wrongParameterTypeIsBadRequest() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new IdController())
+                .setControllerAdvice(handler)
+                .build();
+
+        mockMvc.perform(get("/items/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid request."));
+    }
 
     @Test
     void apiExceptionKeepsStatusAndMessage() {
