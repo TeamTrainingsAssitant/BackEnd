@@ -47,7 +47,7 @@ class PlanExerciseRequestTest {
     @Test
     void validIndividualSetsCanBeProvidedWhenAddingAnExercise() {
         assertThat(validator.validate(new PlanExerciseRequest("01qpYSe", null, null, null, null,
-                java.util.List.of(new TrainingSetRequest(80.0, 10, false))))).isEmpty();
+                java.util.List.of(new TrainingSetRequest(80.0, 10))))).isEmpty();
     }
 
     @Test

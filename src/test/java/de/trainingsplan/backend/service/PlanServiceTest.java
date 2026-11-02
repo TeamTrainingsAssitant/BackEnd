@@ -159,8 +159,8 @@ class PlanServiceTest {
         when(planExerciseRepository.countByPlanId(PLAN_ID)).thenReturn(0);
 
         planService.addExercise(user, PLAN_ID, new PlanExerciseRequest("01qpYSe", null, null, null, null,
-                List.of(new TrainingSetRequest(80.0, 10, false),
-                        new TrainingSetRequest(70.0, 8, false))));
+                List.of(new TrainingSetRequest(80.0, 10),
+                        new TrainingSetRequest(70.0, 8))));
 
         ArgumentCaptor<PlanExercise> saved = ArgumentCaptor.forClass(PlanExercise.class);
         verify(planExerciseRepository).save(saved.capture());

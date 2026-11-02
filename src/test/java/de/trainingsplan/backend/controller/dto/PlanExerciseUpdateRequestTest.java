@@ -54,7 +54,7 @@ class PlanExerciseUpdateRequestTest {
     @Test
     void validIndividualSetsHaveNoViolations() {
         assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, null, null, java.util.List.of(
-                new TrainingSetRequest(80.0, 10, false), new TrainingSetRequest(70.0, 8, true))))).isEmpty();
+                new TrainingSetRequest(80.0, 10), new TrainingSetRequest(70.0, 8))))).isEmpty();
     }
 
     @Test
@@ -66,11 +66,11 @@ class PlanExerciseUpdateRequestTest {
     @Test
     void weightAndRepsAreRequiredInEverySet() {
         assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, null, null,
-                java.util.List.of(new TrainingSetRequest(null, 10, false)))))
+                java.util.List.of(new TrainingSetRequest(null, 10)))))
                 .anySatisfy(violation -> assertThat(violation.getPropertyPath())
                         .hasToString("trainingSets[0].weight"));
         assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, null, null,
-                java.util.List.of(new TrainingSetRequest(80.0, null, false)))))
+                java.util.List.of(new TrainingSetRequest(80.0, null)))))
                 .anySatisfy(violation -> assertThat(violation.getPropertyPath())
                         .hasToString("trainingSets[0].reps"));
     }

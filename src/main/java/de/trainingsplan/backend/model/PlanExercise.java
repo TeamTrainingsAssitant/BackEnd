@@ -97,7 +97,7 @@ public class PlanExercise {
         }
         int count = sets == null ? 1 : sets;
         List<TrainingSet> values = new ArrayList<>();
-        for (int i = 0; i < count; i++) values.add(new TrainingSet(weight, reps, false));
+        for (int i = 0; i < count; i++) values.add(new TrainingSet(weight, reps));
         updateTrainingSets(values);
     }
 

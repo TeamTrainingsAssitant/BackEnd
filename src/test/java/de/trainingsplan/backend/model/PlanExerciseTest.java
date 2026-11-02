@@ -51,9 +51,9 @@ class PlanExerciseTest {
         PlanExercise exercise = exercise();
 
         exercise.updateTrainingSets(List.of(
-                new TrainingSet(80.0, 10, true),
-                new TrainingSet(70.0, 8, false),
-                new TrainingSet(60.0, 6, false)));
+                new TrainingSet(80.0, 10),
+                new TrainingSet(70.0, 8),
+                new TrainingSet(60.0, 6)));
 
         assertThat(exercise.getTrainingSets()).hasSize(3);
         assertThat(exercise.getSets()).isEqualTo(3);
