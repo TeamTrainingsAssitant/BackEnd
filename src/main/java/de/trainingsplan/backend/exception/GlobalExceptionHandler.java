@@ -4,6 +4,7 @@ import de.trainingsplan.backend.controller.dto.MessageResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.ErrorResponse;
@@ -35,13 +36,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<MessageResponse> handleUnexpected(Exception ex) {
         // Von Spring selbst erzeugte Fehler (404 unbekannte URL, 405, 415 ...) behalten ihren Status.
         if (ex instanceof ErrorResponse errorResponse && errorResponse.getStatusCode().is4xxClientError()) {
-            String message = errorResponse.getStatusCode().isSameCodeAs(HttpStatus.NOT_FOUND)
-                    ? "Not found."
-                    : "Request not supported.";
+            String message = clientErrorMessage(errorResponse.getStatusCode());
             return ResponseEntity.status(errorResponse.getStatusCode()).body(new MessageResponse(message));
         }
         log.error("Unexpected error", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new MessageResponse("Internal server error."));
+    }
+
+    private String clientErrorMessage(HttpStatusCode status) {
+        if (status.isSameCodeAs(HttpStatus.NOT_FOUND)) {
+            return "Not found.";
+        }
+        if (status.isSameCodeAs(HttpStatus.BAD_REQUEST)) {
+            return "Invalid request.";
+        }
+        return "Request not supported.";
     }
 }

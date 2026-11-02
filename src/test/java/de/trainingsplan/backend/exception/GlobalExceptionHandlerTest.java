@@ -20,6 +20,7 @@ import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 class GlobalExceptionHandlerTest {
@@ -33,6 +34,22 @@ class GlobalExceptionHandlerTest {
         String get(@PathVariable Long id) {
             return "ok";
         }
+
+        @GetMapping("/items")
+        String list(@RequestParam String name) {
+            return "ok";
+        }
+    }
+
+    @Test
+    void missingParameterIsInvalidRequest() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new IdController())
+                .setControllerAdvice(handler)
+                .build();
+
+        mockMvc.perform(get("/items"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid request."));
     }
 
     @Test
@@ -124,7 +141,7 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void otherSpringClientErrorsAreReportedAsNotSupported() {
+    void otherSpringClientErrorsGetFittingMessage() {
         ResponseEntity<MessageResponse> unsupported =
                 handler.handleUnexpected(new ErrorResponseException(HttpStatus.UNSUPPORTED_MEDIA_TYPE));
         ResponseEntity<MessageResponse> badRequest =
@@ -133,7 +150,7 @@ class GlobalExceptionHandlerTest {
         assertThat(unsupported.getStatusCode()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
         assertThat(unsupported.getBody()).isEqualTo(new MessageResponse("Request not supported."));
         assertThat(badRequest.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(badRequest.getBody()).isEqualTo(new MessageResponse("Request not supported."));
+        assertThat(badRequest.getBody()).isEqualTo(new MessageResponse("Invalid request."));
     }
 
     @Test
