@@ -10,7 +10,7 @@ import java.util.List;
 
 public record PlanExerciseUpdateRequest(@Size(max = 500) String note,
         @DecimalMin("0") @DecimalMax("1000") Double weight, @Min(1) @Max(20) Integer sets,
-        @Min(1) @Max(100) Integer reps, @Size(min = 1, max = 20) List<@Valid TrainingSetRequest> trainingSets) {
+        @Min(1) @Max(100) Integer reps, @Size(max = 20) List<@Valid TrainingSetRequest> trainingSets) {
 
     public PlanExerciseUpdateRequest(String note, Double weight, Integer sets, Integer reps) {
         this(note, weight, sets, reps, null);

@@ -200,6 +200,22 @@ class PlanServiceTest {
     }
 
     @Test
+    void updateExerciseWithEmptyTrainingSetsClearsTrainingValues() {
+        PlanExercise exercise = new PlanExercise(plan, "01qpYSe", "upward facing dog", null,
+                List.of(), List.of(), 1, null);
+        exercise.updateTraining(60.0, 3, 10);
+        when(planExerciseRepository.findByIdAndPlanId(7L, PLAN_ID)).thenReturn(Optional.of(exercise));
+
+        planService.updateExercise(user, PLAN_ID, 7L,
+                new PlanExerciseUpdateRequest(null, null, null, null, List.of()));
+
+        assertThat(exercise.getTrainingSets()).isEmpty();
+        assertThat(exercise.getWeight()).isNull();
+        assertThat(exercise.getSets()).isNull();
+        assertThat(exercise.getReps()).isNull();
+    }
+
+    @Test
     void replaceExerciseKeepsWeightSetsAndReps() {
         PlanExercise exercise = new PlanExercise(plan, "01qpYSe", "upward facing dog", null,
                 List.of(), List.of(), 3, "Sitz 4");

@@ -112,7 +112,11 @@ public class PlanService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exercise not found."));
         exercise.updateNote(request.note());
         if (request.trainingSets() != null) {
-            exercise.updateTrainingSets(request.trainingSets().stream().map(dto -> dto.toModel()).toList());
+            if (request.trainingSets().isEmpty()) {
+                exercise.updateTraining(null, null, null);
+            } else {
+                exercise.updateTrainingSets(request.trainingSets().stream().map(dto -> dto.toModel()).toList());
+            }
         } else if (request.weight() != null || request.sets() != null || request.reps() != null) {
             exercise.updateTraining(request.weight(), request.sets(), request.reps());
         }

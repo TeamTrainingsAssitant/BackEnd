@@ -39,9 +39,8 @@ public class PlanController {
 
     @GetMapping
     public List<PlanListItemResponse> list(@AuthenticationPrincipal User user) {
-        // exerciseCount ist 0, bis es Übungen in Plänen gibt
         return planService.list(user).stream()
-                .map(plan -> PlanListItemResponse.from(plan, 0))
+                .map(plan -> PlanListItemResponse.from(plan, planService.exerciseCount(plan.getId())))
                 .toList();
     }
 

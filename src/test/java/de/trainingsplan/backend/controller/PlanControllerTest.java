@@ -45,15 +45,17 @@ class PlanControllerTest {
     }
 
     @Test
-    void listMapsPlansToListItemsWithZeroExercises() {
+    void listMapsPlansToListItemsWithExerciseCounts() {
         when(planService.list(user)).thenReturn(List.of(planWithId(10L, "Push"), planWithId(11L, "Pull")));
+        when(planService.exerciseCount(10L)).thenReturn(3);
+        when(planService.exerciseCount(11L)).thenReturn(1);
 
         List<PlanListItemResponse> response = controller.list(user);
 
         assertThat(response).hasSize(2);
         assertThat(response).extracting(PlanListItemResponse::id).containsExactly(10L, 11L);
         assertThat(response).extracting(PlanListItemResponse::name).containsExactly("Push", "Pull");
-        assertThat(response).extracting(PlanListItemResponse::exerciseCount).containsOnly(0);
+        assertThat(response).extracting(PlanListItemResponse::exerciseCount).containsExactly(3, 1);
     }
 
     @Test

@@ -58,9 +58,9 @@ class PlanExerciseUpdateRequestTest {
     }
 
     @Test
-    void emptyTrainingSetsAreRejected() {
+    void emptyTrainingSetsAreAllowedToClearTrainingValues() {
         assertThat(validator.validate(new PlanExerciseUpdateRequest(null, null, null, null, java.util.List.of())))
-                .anySatisfy(violation -> assertThat(violation.getPropertyPath()).hasToString("trainingSets"));
+                .isEmpty();
     }
 
     @Test
