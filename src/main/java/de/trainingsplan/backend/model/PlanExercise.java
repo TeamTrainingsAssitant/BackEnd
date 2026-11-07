@@ -53,16 +53,6 @@ public class PlanExercise {
     @Column(length = 500)
     private String note;
 
-    // Read-only fallback for rows created before trainingSets became canonical.
-    @Column(insertable = false, updatable = false)
-    private Double weight;
-
-    @Column(insertable = false, updatable = false)
-    private Integer sets;
-
-    @Column(insertable = false, updatable = false)
-    private Integer reps;
-
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "plan_exercise_training_sets", joinColumns = @JoinColumn(name = "plan_exercise_id"))
     @OrderColumn(name = "set_position")
@@ -101,7 +91,7 @@ public class PlanExercise {
         updateTrainingSets(values);
     }
 
-    /** Ersetzt die einzelnen Sätze und hält die bisherigen Summenfelder kompatibel. */
+    /** Ersetzt die einzelnen Sätze. */
     public void updateTrainingSets(List<TrainingSet> trainingSets) {
         if (trainingSets == null || trainingSets.isEmpty()) {
             throw new IllegalArgumentException("At least one training set is required.");
@@ -166,19 +156,24 @@ public class PlanExercise {
         return note;
     }
 
+    // Gewicht, Sätze und Wiederholungen werden nicht gespeichert, sondern aus trainingSets berechnet.
+
+    /** Gewicht des ersten Satzes, null ohne Sätze. */
     @Transient
     public Double getWeight() {
-        return trainingSets.isEmpty() ? weight : trainingSets.get(0).getWeight();
+        return trainingSets.isEmpty() ? null : trainingSets.get(0).getWeight();
     }
 
+    /** Anzahl der Sätze, null ohne Sätze. */
     @Transient
     public Integer getSets() {
-        return trainingSets.isEmpty() ? sets : Integer.valueOf(trainingSets.size());
+        return trainingSets.isEmpty() ? null : trainingSets.size();
     }
 
+    /** Wiederholungen des ersten Satzes, null ohne Sätze. */
     @Transient
     public Integer getReps() {
-        return trainingSets.isEmpty() ? reps : trainingSets.get(0).getReps();
+        return trainingSets.isEmpty() ? null : trainingSets.get(0).getReps();
     }
 
     public List<TrainingSet> getTrainingSets() {
