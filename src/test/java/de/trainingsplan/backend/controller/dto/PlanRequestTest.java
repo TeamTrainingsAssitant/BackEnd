@@ -27,15 +27,11 @@ class PlanRequestTest {
         factory.close();
     }
 
-    @Test
-    void validRequestWithoutDescriptionHasNoViolations() {
-        assertThat(validator.validate(new PlanRequest("Push", null))).isEmpty();
-    }
 
     @Test
     void nullEmptyAndBlankNamesAreRejected() {
         for (String name : new String[] {null, "", "   "}) {
-            Set<ConstraintViolation<PlanRequest>> violations = validator.validate(new PlanRequest(name, "x"));
+            Set<ConstraintViolation<PlanRequest>> violations = validator.validate(new PlanRequest(name));
 
             assertThat(violations).hasSize(1);
             assertThat(violations.iterator().next().getPropertyPath()).hasToString("name");

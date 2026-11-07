@@ -6,11 +6,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /** Ein Plan mit allen Übungen (in Reihenfolge) für den Datenexport. */
-public record PlanExportResponse(Long id, String name, String description,
+public record PlanExportResponse(Long id, String name,
         LocalDateTime createdAt, LocalDateTime updatedAt, List<PlanExerciseResponse> exercises) {
 
     public static PlanExportResponse from(Plan plan, List<PlanExercise> exercises) {
-        return new PlanExportResponse(plan.getId(), plan.getName(), plan.getDescription(),
+        return new PlanExportResponse(plan.getId(), plan.getName(),
                 plan.getCreatedAt(), plan.getUpdatedAt(),
                 exercises.stream().map(PlanExerciseResponse::from).toList());
     }

@@ -213,7 +213,7 @@ class UserServiceTest {
     }
 
     private Plan planWithId(User user, long id, String name) {
-        Plan plan = new Plan(user, name, null);
+        Plan plan = new Plan(user, name);
         ReflectionTestUtils.setField(plan, "id", id);
         return plan;
     }

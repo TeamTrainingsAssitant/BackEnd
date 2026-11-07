@@ -10,7 +10,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class PlanResponseTest {
 
     private Plan plan() {
-        Plan plan = new Plan(new User("max", "max@mosbach.de", "hash"), "Push", "Brust");
+        Plan plan = new Plan(new User("max", "max@mosbach.de", "hash"), "Push");
         ReflectionTestUtils.setField(plan, "id", 10L);
         return plan;
     }
@@ -23,7 +23,6 @@ class PlanResponseTest {
 
         assertThat(response.id()).isEqualTo(10L);
         assertThat(response.name()).isEqualTo("Push");
-        assertThat(response.description()).isEqualTo("Brust");
         assertThat(response.createdAt()).isEqualTo(plan.getCreatedAt());
         assertThat(response.updatedAt()).isEqualTo(plan.getUpdatedAt());
     }
@@ -36,7 +35,6 @@ class PlanResponseTest {
 
         assertThat(response.id()).isEqualTo(10L);
         assertThat(response.name()).isEqualTo("Push");
-        assertThat(response.description()).isEqualTo("Brust");
         assertThat(response.updatedAt()).isEqualTo(plan.getUpdatedAt());
         assertThat(response.exerciseCount()).isEqualTo(3);
     }

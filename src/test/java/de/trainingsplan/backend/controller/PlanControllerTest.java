@@ -43,7 +43,7 @@ class PlanControllerTest {
     }
 
     private Plan planWithId(long id, String name) {
-        Plan plan = new Plan(user, name, "Beschreibung");
+        Plan plan = new Plan(user, name);
         ReflectionTestUtils.setField(plan, "id", id);
         return plan;
     }
@@ -79,7 +79,7 @@ class PlanControllerTest {
 
     @Test
     void createReturnsCreatedWithPlan() {
-        PlanRequest request = new PlanRequest("Push", "Beschreibung");
+        PlanRequest request = new PlanRequest("Push");
         when(planService.create(user, request)).thenReturn(planWithId(10L, "Push"));
 
         ResponseEntity<PlanResponse> response = controller.create(user, request);
@@ -98,12 +98,11 @@ class PlanControllerTest {
 
         assertThat(response.id()).isEqualTo(10L);
         assertThat(response.name()).isEqualTo("Push");
-        assertThat(response.description()).isEqualTo("Beschreibung");
     }
 
     @Test
     void updateReturnsUpdatedPlan() {
-        PlanRequest request = new PlanRequest("Neu", "Neue Beschreibung");
+        PlanRequest request = new PlanRequest("Neu");
         when(planService.update(user, 10L, request)).thenReturn(planWithId(10L, "Neu"));
 
         PlanResponse response = controller.update(user, 10L, request);

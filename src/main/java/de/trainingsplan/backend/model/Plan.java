@@ -31,8 +31,6 @@ public class Plan {
     @Column(nullable = false)
     private String name;
 
-    private String description;
-
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -46,18 +44,16 @@ public class Plan {
     protected Plan() {
     }
 
-    public Plan(User user, String name, String description) {
+    public Plan(User user, String name) {
         this.user = user;
         this.name = name;
-        this.description = description;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = this.createdAt;
     }
 
-    /** Ändert Name und Beschreibung und setzt "zuletzt bearbeitet" neu. */
-    public void update(String name, String description) {
+    /** Ändert den Namen und setzt "zuletzt bearbeitet" neu. */
+    public void update(String name) {
         this.name = name;
-        this.description = description;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -76,10 +72,6 @@ public class Plan {
 
     public String getName() {
         return name;
-    }
-
-    public String getDescription() {
-        return description;
     }
 
     public LocalDateTime getCreatedAt() {

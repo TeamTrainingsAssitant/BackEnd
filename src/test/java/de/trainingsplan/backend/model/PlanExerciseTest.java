@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class PlanExerciseTest {
 
     private PlanExercise exercise() {
-        Plan plan = new Plan(new User("max", "max@mosbach.de", "hash"), "Push", null);
+        Plan plan = new Plan(new User("max", "max@mosbach.de", "hash"), "Push");
         return new PlanExercise(plan, "ex1", "Bench Press", "http://gif/ex1",
                 List.of("pectorals"), List.of("triceps"), 2, "langsam");
     }

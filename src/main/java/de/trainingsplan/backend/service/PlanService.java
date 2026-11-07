@@ -44,7 +44,7 @@ public class PlanService {
 
     @Transactional
     public Plan create(User user, PlanRequest request) {
-        return planRepository.save(new Plan(user, request.name().trim(), request.description()));
+        return planRepository.save(new Plan(user, request.name().trim()));
     }
 
     @Transactional(readOnly = true)
@@ -66,7 +66,7 @@ public class PlanService {
     @Transactional
     public Plan update(User user, Long planId, PlanRequest request) {
         Plan plan = findOwnPlan(user, planId);
-        plan.update(request.name().trim(), request.description());
+        plan.update(request.name().trim());
         return plan;
     }
 

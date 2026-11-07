@@ -52,7 +52,7 @@ class PlanServiceTest {
 
         user = userWithId("max", USER_ID);
         otherUser = userWithId("anna", 2L);
-        plan = new Plan(user, "Push Day", null);
+        plan = new Plan(user, "Push Day");
         when(planRepository.findByIdAndUserId(PLAN_ID, USER_ID)).thenReturn(Optional.of(plan));
         when(planExerciseRepository.save(any(PlanExercise.class))).thenAnswer(inv -> inv.getArgument(0));
     }
@@ -64,7 +64,7 @@ class PlanServiceTest {
     }
 
     private Plan planWithId(User owner, long id) {
-        Plan plan = new Plan(owner, "Push Day", "Brust und Schulter");
+        Plan plan = new Plan(owner, "Push Day");
         ReflectionTestUtils.setField(plan, "id", id);
         return plan;
     }
@@ -323,24 +323,15 @@ class PlanServiceTest {
     void createTrimsNameAndSavesPlanForUser() {
         when(planRepository.save(any(Plan.class))).thenAnswer(call -> call.getArgument(0));
 
-        Plan created = planService.create(user, new PlanRequest("  Pull Day  ", "Rücken"));
+        Plan created = planService.create(user, new PlanRequest("  Pull Day  "));
 
         ArgumentCaptor<Plan> saved = ArgumentCaptor.forClass(Plan.class);
         verify(planRepository).save(saved.capture());
         assertThat(saved.getValue().getName()).isEqualTo("Pull Day");
-        assertThat(saved.getValue().getDescription()).isEqualTo("Rücken");
         assertThat(saved.getValue().getUser()).isSameAs(user);
         assertThat(created).isSameAs(saved.getValue());
     }
 
-    @Test
-    void createAllowsMissingDescription() {
-        when(planRepository.save(any(Plan.class))).thenAnswer(call -> call.getArgument(0));
-
-        Plan created = planService.create(user, new PlanRequest("Leg Day", null));
-
-        assertThat(created.getDescription()).isNull();
-    }
 
     @Test
     void getReturnsOwnPlan() {
@@ -365,23 +356,22 @@ class PlanServiceTest {
     }
 
     @Test
-    void updateChangesNameAndDescriptionAndTouchesUpdatedAt() {
+    void updateChangesNameAndTouchesUpdatedAt() {
         Plan plan = planWithId(user, 10L);
         LocalDateTime createdAt = plan.getCreatedAt();
         when(planRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(plan));
 
-        Plan updated = planService.update(user, 10L, new PlanRequest("  Neuer Name ", "Neu"));
+        Plan updated = planService.update(user, 10L, new PlanRequest("  Neuer Name "));
 
         assertThat(updated).isSameAs(plan);
         assertThat(updated.getName()).isEqualTo("Neuer Name");
-        assertThat(updated.getDescription()).isEqualTo("Neu");
         assertThat(updated.getCreatedAt()).isEqualTo(createdAt);
         assertThat(updated.getUpdatedAt()).isAfterOrEqualTo(createdAt);
     }
 
     @Test
     void updateForeignOrUnknownPlanIsNotFound() {
-        assertNotFound(() -> planService.update(user, 99L, new PlanRequest("Name", null)));
+        assertNotFound(() -> planService.update(user, 99L, new PlanRequest("Name")));
     }
 
     @Test

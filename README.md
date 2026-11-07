@@ -66,7 +66,7 @@ So wird getestet:
 | DELETE | `/users/me` | Token nötig | Konto löschen. Das Passwort steht im Body (`{"password":"..."}`). Löscht auch alle Pläne und Tokens. Bei falschem Passwort `400`. |
 | GET | `/exercises?name=push&limit=20` | Token nötig | Durchsucht ExerciseDB über das Backend und liefert Übungsname, GIF sowie Muskelgruppen. |
 | GET | `/plans` | Token nötig | Liste der eigenen Pläne. |
-| POST | `/plans` | Token nötig | Legt einen Plan an (`name` Pflicht, optional `description`). |
+| POST | `/plans` | Token nötig | Legt einen Plan an (`name` Pflicht). |
 | GET, PUT, DELETE | `/plans/{planId}` | Token nötig | Plan lesen, ändern oder samt Übungen löschen. |
 | GET | `/plans/{planId}/exercises` | Token nötig | Liefert die Übungen eines eigenen Plans in Positionsreihenfolge. |
 | POST | `/plans/{planId}/exercises` | Token nötig | Fügt eine ExerciseDB-Übung hinzu (`externalId`, optional `note`, `weight` in kg von 0 bis 1000, `sets` von 1 bis 20, `reps` von 1 bis 100). Werte außerhalb der Grenzen: `400`. |
