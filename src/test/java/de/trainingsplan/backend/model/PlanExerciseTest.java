@@ -47,6 +47,19 @@ class PlanExerciseTest {
     }
 
     @Test
+    void updateTrainingWithoutWeightOrRepsStoresNoSet() {
+        PlanExercise exercise = exercise();
+        exercise.updateTraining(82.5, 4, 8);
+
+        exercise.updateTraining(null, 3, null);
+        assertThat(exercise.getTrainingSets()).isEmpty();
+
+        exercise.updateTraining(60.0, 3, 10);
+        exercise.updateTraining(60.0, 3, null);
+        assertThat(exercise.getTrainingSets()).isEmpty();
+    }
+
+    @Test
     void updateTrainingSetsUsesTheWholeListAndDerivesLegacySummary() {
         PlanExercise exercise = exercise();
 

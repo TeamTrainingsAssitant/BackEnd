@@ -79,9 +79,12 @@ public class PlanExercise {
         this.note = note;
     }
 
-    /** Ersetzt Gewicht, Sätze und Wiederholungen, null entfernt den jeweiligen Wert. */
+    /**
+     * Ersetzt die Sätze durch {@code sets} gleiche Sätze (Standard 1). Ein Satz braucht Gewicht und
+     * Wiederholungen. Fehlt eines von beiden, werden die Sätze entfernt, es wird kein leerer Satz gespeichert.
+     */
     public void updateTraining(Double weight, Integer sets, Integer reps) {
-        if (weight == null && sets == null && reps == null) {
+        if (weight == null || reps == null) {
             this.trainingSets.clear();
             return;
         }

@@ -85,11 +85,11 @@ public class PlanService {
                 external.primaryMuscleGroups(), external.secondaryMuscleGroups(), position, request.note());
         if (request.trainingSets() != null) {
             exercise.updateTrainingSets(request.trainingSets().stream().map(dto -> dto.toModel()).toList());
-        } else if (request.weight() != null || request.sets() != null || request.reps() != null) {
+        } else if (request.weight() != null || request.reps() != null) {
+            requireWeightWithReps(request.weight(), request.reps());
             exercise.updateTraining(request.weight(), request.sets(), request.reps());
-        } else {
-            exercise.updateTraining(null, 1, null);
         }
+        // Ohne Trainingswerte bleibt trainingSets leer, es wird kein leerer Satz gespeichert.
         plan.touch();
         return planExerciseRepository.save(exercise);
     }
@@ -117,11 +117,19 @@ public class PlanService {
             } else {
                 exercise.updateTrainingSets(request.trainingSets().stream().map(dto -> dto.toModel()).toList());
             }
-        } else if (request.weight() != null || request.sets() != null || request.reps() != null) {
+        } else if (request.weight() != null || request.reps() != null) {
+            requireWeightWithReps(request.weight(), request.reps());
             exercise.updateTraining(request.weight(), request.sets(), request.reps());
         }
         plan.touch();
         return exercise;
+    }
+
+    /** Ein Satz braucht Gewicht und Wiederholungen, nur eines von beiden kann nicht gespeichert werden. */
+    private static void requireWeightWithReps(Double weight, Integer reps) {
+        if ((weight == null) != (reps == null)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "weight and reps must be given together.");
+        }
     }
 
     /** Findet passende Katalogübungen, die noch nicht im eigenen Plan stehen. */

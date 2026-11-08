@@ -192,11 +192,63 @@ class PlanServiceTest {
         exercise.updateTraining(60.0, 3, 10);
         when(planExerciseRepository.findByIdAndPlanId(7L, PLAN_ID)).thenReturn(Optional.of(exercise));
 
-        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest(null, 70.0, null, null));
+        planService.updateExercise(user, PLAN_ID, 7L, new PlanExerciseUpdateRequest(null, 70.0, null, 8));
 
         assertThat(exercise.getWeight()).isEqualTo(70.0);
         assertThat(exercise.getSets()).isEqualTo(1);
-        assertThat(exercise.getReps()).isNull();
+        assertThat(exercise.getReps()).isEqualTo(8);
+    }
+
+    @Test
+    void updateExerciseWithOnlyWeightOrOnlyRepsIsRejectedAndKeepsExistingSets() {
+        PlanExercise exercise = new PlanExercise(plan, "01qpYSe", "upward facing dog", null,
+                List.of(), List.of(), 1, null);
+        exercise.updateTraining(60.0, 3, 10);
+        when(planExerciseRepository.findByIdAndPlanId(7L, PLAN_ID)).thenReturn(Optional.of(exercise));
+
+        assertThatThrownBy(() -> planService.updateExercise(user, PLAN_ID, 7L,
+                new PlanExerciseUpdateRequest(null, 70.0, null, null)))
+                .isInstanceOfSatisfying(ApiException.class, e -> {
+                    assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(e.getMessage()).isEqualTo("weight and reps must be given together.");
+                });
+        assertThatThrownBy(() -> planService.updateExercise(user, PLAN_ID, 7L,
+                new PlanExerciseUpdateRequest(null, null, null, 8)))
+                .isInstanceOfSatisfying(ApiException.class,
+                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        assertThat(exercise.getTrainingSets()).hasSize(3);
+        assertThat(exercise.getWeight()).isEqualTo(60.0);
+        assertThat(exercise.getReps()).isEqualTo(10);
+    }
+
+    @Test
+    void addExerciseWithoutTrainingValuesStoresNoEmptySet() {
+        when(exerciseCatalog.findById("01qpYSe")).thenReturn(new ExerciseDbClient.ExternalExercise(
+                "01qpYSe", "upward facing dog", null, List.of(), List.of(), List.of(), List.of(), List.of()));
+        when(planExerciseRepository.countByPlanId(PLAN_ID)).thenReturn(0);
+
+        planService.addExercise(user, PLAN_ID, new PlanExerciseRequest("01qpYSe", null, null, null, null));
+
+        ArgumentCaptor<PlanExercise> saved = ArgumentCaptor.forClass(PlanExercise.class);
+        verify(planExerciseRepository).save(saved.capture());
+        assertThat(saved.getValue().getTrainingSets()).isEmpty();
+        assertThat(saved.getValue().getSets()).isNull();
+    }
+
+    @Test
+    void addExerciseWithOnlyWeightIsRejected() {
+        when(exerciseCatalog.findById("01qpYSe")).thenReturn(new ExerciseDbClient.ExternalExercise(
+                "01qpYSe", "upward facing dog", null, List.of(), List.of(), List.of(), List.of(), List.of()));
+        when(planExerciseRepository.countByPlanId(PLAN_ID)).thenReturn(0);
+
+        assertThatThrownBy(() -> planService.addExercise(user, PLAN_ID,
+                new PlanExerciseRequest("01qpYSe", null, 82.5, null, null)))
+                .isInstanceOfSatisfying(ApiException.class, e -> {
+                    assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(e.getMessage()).isEqualTo("weight and reps must be given together.");
+                });
+        verify(planExerciseRepository, never()).save(any());
     }
 
     @Test
