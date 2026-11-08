@@ -139,7 +139,7 @@ public class ExerciseCatalog {
 
     /**
      * Sucht im Katalog. {@code name} ist ein Teil des Namens (null oder leer: kein Filter),
-     * {@code muscles}: die Übung muss mindestens einen davon primär oder sekundär trainieren
+     * {@code muscles}: die Übung muss alle davon primär oder sekundär trainieren
      * (null oder leer: kein Filter). Danach wird die Seite ab {@code offset} mit {@code limit}
      * Einträgen ausgeschnitten, {@code total} ist die Trefferzahl vor dem Ausschneiden.
      */
